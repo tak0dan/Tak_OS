@@ -25,7 +25,7 @@ A beautiful, modular Bash framework for managing NixOS packages declaratively th
 
 ```bash
 # Automated setup (recommended)
-cd WtfOS/NixOS
+cd Tak_OS/NixOS
 sudo bash install.sh
 
 # Or follow manual steps in INSTALL.md

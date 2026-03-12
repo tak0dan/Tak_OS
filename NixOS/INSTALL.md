@@ -18,11 +18,11 @@ sudo nixos-rebuild switch --upgrade
 
 This ensures your system is up-to-date before adding new packages.
 
-#### 2. Clone the WtfOS Repository
+#### 2. Clone the Tak_OS Repository
 ```bash
 cd ~
-git clone https://github.com/yourusername/WtfOS.git
-cd WtfOS
+git clone https://github.com/yourusername/Tak_OS.git
+cd Tak_OS
 ```
 
 #### 3. Copy Configuration to NixOS
@@ -72,7 +72,7 @@ nixorcist help
 To automate all these steps, use the provided `install.sh` script:
 
 ```bash
-cd WtfOS/NixOS
+cd Tak_OS/NixOS
 sudo bash install.sh
 ```
 
@@ -95,7 +95,7 @@ sudo nixos-rebuild switch --upgrade
 ### 2. Prepare NixOS Directory
 ```bash
 sudo mkdir -p /etc/nixos
-cd ~/WtfOS
+cd ~/Tak_OS
 ```
 
 ### 3. Copy Configuration
@@ -158,7 +158,7 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 ### Issue: "package attribute missing"
 **Solution:** Run the automated install script to ensure all steps are followed correctly:
 ```bash
-cd WtfOS/NixOS
+cd Tak_OS/NixOS
 sudo bash install.sh --skip-upgrade  # Skip upgrade if already done
 ```
 

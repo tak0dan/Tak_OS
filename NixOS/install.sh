@@ -296,7 +296,7 @@ EOF
 
 # Main execution
 main() {
-    print_header "WtfOS NixOS Post-Fresh-Install Setup"
+    print_header "Tak_OS NixOS Post-Fresh-Install Setup"
     
     echo -e "\nThis script will:"
     echo "  1. Upgrade your NixOS system"
