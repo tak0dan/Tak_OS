@@ -568,12 +568,12 @@ transaction_pick_from_index() {
 
   while true; do
     fzf_out="$(_render_index_rows | fzf --ansi --multi \
-      --expect=enter,ctrl-o,s \
+      --expect=enter,ctrl-o \
       --print-query \
       --delimiter=$'\t' \
       --with-nth=2 \
       --prompt="SELECT> " \
-      --header="TAB mark | ENTER confirm | ctrl-o/s or OWNER SEARCH row for owner menu" \
+      --header="TAB mark | ENTER confirm | ctrl-o or OWNER SEARCH row for owner menu" \
       --preview "$(_fzf_pkg_preview_cmd)" \
       --preview-window=down:6:wrap)" || return 1
 
@@ -602,7 +602,7 @@ transaction_pick_from_index() {
       fi
     fi
 
-    if [[ "$key" == "ctrl-o" || "$key" == "s" || "$key" == "OWNER_ACTION" ]]; then
+    if [[ "$key" == "ctrl-o" || "$key" == "OWNER_ACTION" ]]; then
       needle="$(sanitize_token "$query")"
       if [[ -z "$needle" && ${#selected_pkgs[@]} -gt 0 ]]; then
         needle="${selected_pkgs[0]}"
@@ -939,6 +939,35 @@ show_transaction_header() {
   echo
 }
 
+prompt_index_fetch_depth() {
+  local depth_input=""
+  local fetch_depth="5"
+
+  while true; do
+    printf '  Enter fetch depth [1-5] (default 5, q to cancel): '
+    read -r depth_input || true
+    depth_input="${depth_input//[[:space:]]/}"
+    depth_input="${depth_input,,}"
+
+    if [[ -z "$depth_input" ]]; then
+      printf '%s\n' "5"
+      return 0
+    fi
+
+    if [[ "$depth_input" == "q" ]]; then
+      return 1
+    fi
+
+    if [[ "$depth_input" =~ ^[1-5]$ ]]; then
+      fetch_depth="$depth_input"
+      printf '%s\n' "$fetch_depth"
+      return 0
+    fi
+
+    show_error 'Invalid depth. Use 1, 2, 3, 4, or 5.'
+  done
+}
+
 transaction_menu_loop_tty() {
   local choice
   local selected item
@@ -946,6 +975,7 @@ transaction_menu_loop_tty() {
   while true; do
     clear
     show_logo
+    show_refresh_countdown_bar
     show_transaction_header
     show_status_line "Use numbers and Enter to navigate."
     echo
@@ -955,7 +985,7 @@ transaction_menu_loop_tty() {
     show_menu_item '4' 'Manage remove queue'
     show_menu_item '5' 'Preview changes'
     show_menu_item '6' 'Install query       - stage query and apply lock changes'
-    show_menu_item '7' 'Refresh index       - rebuild fetched package cache'
+    show_menu_item '7' 'Fetch index         - choose depth (1-5) and store cache'
     show_menu_item '0' 'Cancel'
     echo
     show_input_prompt 'Select an option (0-7):'
@@ -1034,11 +1064,33 @@ transaction_menu_loop_tty() {
         fi
         ;;
       7)
+        local selected_depth=""
+
         clear
         show_logo
-        show_section_header 'Refreshing Package Index'
-        build_nix_index
-        show_success 'Package index refreshed'
+        show_refresh_countdown_bar
+        show_section_header 'Fetch Package Index'
+        selected_depth="$(prompt_index_fetch_depth || true)"
+        if [[ -z "$selected_depth" ]]; then
+          show_warning 'Fetch cancelled'
+          wait_for_key
+          continue
+        fi
+
+        clear
+        show_logo
+        show_refresh_countdown_bar
+        show_section_header "Fetching Package Index (depth ${selected_depth})"
+        if build_nix_index "$selected_depth"; then
+          show_success 'Package index fetched and cached'
+        else
+          local fetch_rc=$?
+          if [[ "$fetch_rc" -eq 130 ]]; then
+            show_warning 'Package index fetch cancelled by user'
+          else
+            show_error 'Package index fetch failed'
+          fi
+        fi
         wait_for_key
         ;;
       0)
@@ -1528,7 +1580,10 @@ install_from_args() {
   fi
 
   local token
-  ensure_index
+  if ! ensure_index 1; then
+    show_warning 'Install cancelled: package index is required but fetch was declined.'
+    return 1
+  fi
   transaction_init
 
   for token in "$@"; do

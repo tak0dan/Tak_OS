@@ -9,14 +9,25 @@ INDEX_FETCH_PROFILE_FILE="$INDEX_DIR/index-fetch-profile.txt"
 INDEX_STATUS_FILE="$INDEX_DIR/index-status.txt"
 INDEX_REFRESH_ERROR_FILE="$INDEX_DIR/index-refresh-last-error.log"
 INDEX_RECOMMENDED_REFRESH_SECS=$((7 * 24 * 60 * 60))
+INDEX_MIN_VALID_LINES="${NIXORCIST_MIN_INDEX_LINES:-5000}"
 
 _INDEX_UI_ACTIVE=0
-_INDEX_UI_LINES=7
+_INDEX_UI_LINES=8
 _INDEX_EXPECTED_SECS=32
 _INDEX_EXPECTED_A=8
 _INDEX_EXPECTED_B=8
 _INDEX_EXPECTED_C=14
 _INDEX_LAST_STAGE_SECS=0
+_INDEX_CANCEL_REQUESTED=0
+
+index_line_count() {
+  local count="0"
+  if [[ -f "$INDEX_FILE" ]]; then
+    count="$(wc -l < "$INDEX_FILE" 2>/dev/null | tr -d '[:space:]')"
+    [[ "$count" =~ ^[0-9]+$ ]] || count=0
+  fi
+  printf '%s\n' "$count"
+}
 
 _index_valid_epoch() {
   local v="$1"
@@ -329,6 +340,7 @@ _index_ui_draw() {
     printf '\033[2K| Stage: %-51s|\n' "$stage" >&2
     printf '\033[2K| Time:  elapsed %-8s eta %-33s|\n' "$elapsed_txt" "$eta_txt" >&2
     printf '\033[2K| Output: %-50s|\n' "${detail:0:50}" >&2
+    printf '\033[2K| Keys: q/Q cancel fetch and return to nixorcist            |\n' >&2
     printf '\033[2K+------------------------------------------------------------+\n' >&2
   else
     printf 'Index fetch: %s | %s | elapsed=%s eta=%s | %s\n' "$bar" "$stage" "$elapsed_txt" "$eta_txt" "$detail" >&2
@@ -351,6 +363,7 @@ _index_run_stage() {
   local stage_start=0
   local elapsed=0
   local eta=0
+  local key=""
 
   stage_log="$(mktemp)"
 
@@ -359,6 +372,15 @@ _index_run_stage() {
   stage_start=$SECONDS
 
   while kill -0 "$pid" 2>/dev/null; do
+    if [[ -t 0 ]]; then
+      if IFS= read -r -s -n1 -t 0.01 key < /dev/tty; then
+        if [[ "$key" == "q" || "$key" == "Q" ]]; then
+          _INDEX_CANCEL_REQUESTED=1
+          kill "$pid" 2>/dev/null || true
+        fi
+      fi
+    fi
+
     elapsed=$(( SECONDS - stage_start ))
     if (( expected_stage_secs > 0 )) && (( span > 1 )); then
       cur_pct=$(( from_pct + (elapsed * span / expected_stage_secs) ))
@@ -385,6 +407,12 @@ _index_run_stage() {
   detail="$(tail -n1 "$stage_log" 2>/dev/null || true)"
   elapsed=$(( SECONDS - stage_start ))
   _INDEX_LAST_STAGE_SECS="$elapsed"
+  if [[ "$_INDEX_CANCEL_REQUESTED" -eq 1 ]]; then
+    _index_ui_draw "$to_pct" "$stage_label" "cancelled by user" "$elapsed" 0
+    rm -f "$stage_log"
+    return 130
+  fi
+
   if [[ $rc -eq 0 ]]; then
     _index_ui_draw "$to_pct" "$stage_label" "done" "$elapsed" 0
   else
@@ -447,10 +475,63 @@ _index_source_b() {
 
 _index_source_c() {
   local out_file="$1"
-  : > "$out_file"
+  local max_depth="${2:-5}"
+  local -a nix_args=()
+  local expr=""
+
+  [[ "$max_depth" =~ ^[0-9]+$ ]] || max_depth=5
+  (( max_depth < 1 )) && max_depth=1
+  (( max_depth > 5 )) && max_depth=5
+
+  if declare -F _init_nix_pkg_args >/dev/null 2>&1; then
+    _init_nix_pkg_args
+    nix_args=("${_nix_pkg_args[@]}")
+  fi
+
+  expr="$(cat <<'NIX'
+    let
+      pkgs = import <nixpkgs> {};
+      maxDepth = __MAX_DEPTH__;
+
+      concatMap = f: xs: builtins.concatLists (map f xs);
+
+      describe = v:
+        if builtins.isAttrs v && v ? meta && builtins.isAttrs v.meta && v.meta ? description && builtins.isString v.meta.description
+        then v.meta.description
+        else "";
+
+      walk = depth: prefix: attrs:
+        if depth >= maxDepth || !(builtins.isAttrs attrs) then
+          []
+        else
+          let
+            names = builtins.attrNames attrs;
+            step = name:
+              let
+                path = if prefix == "" then name else prefix + "." + name;
+                valueTry = builtins.tryEval attrs.${name};
+                value = if valueTry.success then valueTry.value else null;
+                line = path + "|" + (if valueTry.success then describe value else "");
+                nested = if valueTry.success && builtins.isAttrs value then walk (depth + 1) path value else [];
+              in
+                [line] ++ nested;
+          in
+            concatMap step names;
+    in
+      builtins.concatStringsSep "\n" (walk 0 "" pkgs)
+NIX
+  )"
+  expr="${expr/__MAX_DEPTH__/$max_depth}"
+
+  nix eval --impure "${nix_args[@]}" --raw --expr "$expr" > "$out_file" 2>/dev/null || : > "$out_file"
 }
 
 build_nix_index() {
+  local requested_depth="${1:-5}"
+  [[ "$requested_depth" =~ ^[0-9]+$ ]] || requested_depth=5
+  (( requested_depth < 1 )) && requested_depth=1
+  (( requested_depth > 5 )) && requested_depth=5
+
   echo "Building nixpkgs index..." >&2
 
   mkdir -p "$INDEX_DIR"
@@ -467,6 +548,7 @@ build_nix_index() {
   trap 'rm -f "${tmp_a:-}" "${tmp_b:-}" "${tmp_c:-}" "${tmp_all:-}"' RETURN
 
   _index_ui_begin
+  _INDEX_CANCEL_REQUESTED=0
   _index_load_expected_secs
   _index_load_profile
   build_start=$SECONDS
@@ -477,12 +559,27 @@ build_nix_index() {
   exp_c="$_INDEX_EXPECTED_C"
 
   _index_run_stage 5 30 "Source A (nix-env package list)" "$exp_a" _index_source_a "$tmp_a" || true
+  if [[ "$_INDEX_CANCEL_REQUESTED" -eq 1 ]]; then
+    _index_ui_end
+    echo "Index fetch cancelled by user." >&2
+    return 130
+  fi
   observed_a="$_INDEX_LAST_STAGE_SECS"
 
   _index_run_stage 30 55 "Source B (top-level attrs)" "$exp_b" _index_source_b "$tmp_b" || true
+  if [[ "$_INDEX_CANCEL_REQUESTED" -eq 1 ]]; then
+    _index_ui_end
+    echo "Index fetch cancelled by user." >&2
+    return 130
+  fi
   observed_b="$_INDEX_LAST_STAGE_SECS"
 
-  _index_run_stage 55 80 "Source C (recursive flake scan)" "$exp_c" _index_source_c "$tmp_c" || true
+  _index_run_stage 55 80 "Source C (recursive attr fetch depth ${requested_depth})" "$exp_c" _index_source_c "$tmp_c" "$requested_depth" || true
+  if [[ "$_INDEX_CANCEL_REQUESTED" -eq 1 ]]; then
+    _index_ui_end
+    echo "Index fetch cancelled by user." >&2
+    return 130
+  fi
   observed_c="$_INDEX_LAST_STAGE_SECS"
 
   local lines_a=0
@@ -566,17 +663,102 @@ get_index_file() {
 
 # Ensure index exists and is valid; build if missing or stale
 ensure_index() {
+  local requested_depth="${1:-5}"
   local index_version=""
+  local line_count="0"
+  local min_lines="0"
+  local fetch_epoch="0"
+  local fetch_human="never"
+  local stale=0
+  local too_small=0
+  local needs_fetch=0
+  local reason=""
+  local refresh_choice=""
+  local refresh_confirmed=0
+
+  [[ "$requested_depth" =~ ^[0-9]+$ ]] || requested_depth=5
+  (( requested_depth < 1 )) && requested_depth=1
+  (( requested_depth > 5 )) && requested_depth=5
+
+  if [[ "$INDEX_MIN_VALID_LINES" =~ ^[0-9]+$ ]]; then
+    min_lines="$INDEX_MIN_VALID_LINES"
+  else
+    min_lines=5000
+  fi
+
+  if [[ ! -f "$INDEX_FILE" || ! -s "$INDEX_FILE" ]]; then
+    needs_fetch=1
+    reason="index cache is missing"
+  fi
 
   # Check if index file exists and version matches
-  if [[ -f "$INDEX_FILE" ]] && [[ -f "$INDEX_VERSION_FILE" ]]; then
+  if [[ "$needs_fetch" -eq 0 ]] && [[ -f "$INDEX_FILE" ]] && [[ -f "$INDEX_VERSION_FILE" ]]; then
     index_version="$(cat "$INDEX_VERSION_FILE" 2>/dev/null || true)"
-    if [[ "$index_version" == "$INDEX_VERSION" ]] && [[ -s "$INDEX_FILE" ]]; then
-      # Index is valid and current
+    if [[ "$index_version" != "$INDEX_VERSION" ]]; then
+      reason="cache schema changed (version $index_version -> $INDEX_VERSION)"
+      needs_fetch=1
+    fi
+  fi
+
+  line_count="$(index_line_count)"
+  fetch_epoch="$(index_last_fetch_epoch)"
+  fetch_human="$(index_last_fetch_text)"
+
+  if (( line_count < min_lines )); then
+    too_small=1
+  fi
+
+  if (( fetch_epoch <= 0 )); then
+    stale=1
+  elif (( $(index_refresh_overdue_seconds) > 0 )); then
+    stale=1
+  fi
+
+  if [[ "$needs_fetch" -eq 0 && ( "$stale" -eq 1 || "$too_small" -eq 1 ) ]]; then
+    if [[ "$stale" -eq 1 ]]; then
+      reason="cache is stale"
+    fi
+    if [[ "$too_small" -eq 1 ]]; then
+      [[ -n "$reason" ]] && reason+=" and "
+      reason+="line count is low ($line_count < $min_lines)"
+    fi
+    if [[ -z "$reason" ]]; then
+      reason="cache health check requested refresh"
+    fi
+
+    if [[ -t 0 ]]; then
+      show_warning "Index cache check: $reason"
+      show_status_line 'Last fetch' "$fetch_human"
+      show_status_line 'Cached rows' "$line_count"
+      read -r -p "  Refresh package index now (depth $requested_depth)? [y/N]: " refresh_choice || true
+      refresh_choice="${refresh_choice,,}"
+      refresh_choice="${refresh_choice:0:1}"
+      if [[ "$refresh_choice" != "y" ]]; then
+        return 0
+      fi
+      needs_fetch=1
+      refresh_confirmed=1
+    else
       return 0
     fi
   fi
 
-  # Index missing, stale, or invalid - rebuild it
-  build_nix_index
+  if [[ "$needs_fetch" -eq 1 ]]; then
+    if [[ -t 0 && "$refresh_confirmed" -eq 0 ]]; then
+      show_warning "Index fetch required: $reason"
+      show_status_line 'Last fetch' "$fetch_human"
+      show_status_line 'Cached rows' "$line_count"
+      read -r -p "  Fetch package index now (depth $requested_depth)? [Y/n]: " refresh_choice || true
+      refresh_choice="${refresh_choice,,}"
+      refresh_choice="${refresh_choice:0:1}"
+      if [[ "$refresh_choice" == "n" ]]; then
+        show_warning "Package index fetch cancelled by user."
+        return 1
+      fi
+    fi
+    build_nix_index "$requested_depth"
+    return $?
+  fi
+
+  return 0
 }

@@ -22,8 +22,10 @@ LOCK_FILE="$sandbox/.lock"
 MODULES_DIR="$sandbox/.modules"
 mkdir -p "$MODULES_DIR" "$ROOT/cache"
 export LOCK_FILE MODULES_DIR
+export NIXORCIST_MIN_INDEX_LINES=1
 
-cat > "$ROOT/cache/nixpkgs-index.txt" <<'IDX'
+mkdir -p "$sandbox/cache"
+cat > "$sandbox/cache/nixpkgs-index.txt" <<'IDX'
 eclipses|
 eclipses.eclipse-java|Eclipse Java IDE
 eclipses.eclipse-cpp|Eclipse C++ IDE
@@ -33,7 +35,7 @@ waybar.modules|Waybar module owner
 waybar.modules.cpu|Waybar CPU module
 nano|Nano editor
 IDX
-printf '3\n' > "$ROOT/cache/nixpkgs-index.version"
+printf '3\n' > "$sandbox/cache/nixpkgs-index.version"
 
 # shellcheck disable=SC1091
 source "$ROOT/lib/cli.sh"
@@ -43,6 +45,14 @@ source "$ROOT/lib/index.sh"
 source "$ROOT/lib/utils.sh"
 # shellcheck disable=SC1091
 source "$ROOT/lib/lock.sh"
+
+INDEX_DIR="$sandbox/cache"
+INDEX_FILE="$INDEX_DIR/nixpkgs-index.txt"
+INDEX_VERSION_FILE="$INDEX_DIR/nixpkgs-index.version"
+INDEX_FETCH_TIME_FILE="$INDEX_DIR/index-fetch-seconds.txt"
+INDEX_FETCH_PROFILE_FILE="$INDEX_DIR/index-fetch-profile.txt"
+INDEX_STATUS_FILE="$INDEX_DIR/index-status.txt"
+INDEX_REFRESH_ERROR_FILE="$INDEX_DIR/index-refresh-last-error.log"
 
 # Stubs to avoid noise during tests.
 show_logo() { :; }

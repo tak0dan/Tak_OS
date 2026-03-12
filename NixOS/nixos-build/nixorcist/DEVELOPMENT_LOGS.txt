@@ -168,3 +168,93 @@
 2026-03-12 03:28:34 | TEST-AFTER | Result=PASS description cache files present | Counter=0
 2026-03-12 03:28:34 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
 2026-03-12 03:28:34 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 04:11:07 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 04:11:07 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 04:11:07 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 04:11:08 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 04:11:08 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 04:11:08 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 04:11:08 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 04:11:08 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 04:11:08 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 04:11:08 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 04:11:36 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 04:11:36 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 04:11:36 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 04:11:36 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 04:11:36 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 04:11:36 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 04:11:36 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 04:11:36 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 04:11:36 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 04:11:37 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=1s pick=0s pickResult=nano | Counter=0
+2026-03-12 04:19:08 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 04:19:08 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 04:19:09 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 04:19:09 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 04:19:09 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 04:19:09 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 04:19:09 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 04:19:09 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 04:19:09 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 04:19:09 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 04:31:38 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 04:31:39 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 04:31:39 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 04:31:39 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 04:31:39 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 04:31:39 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 04:31:39 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 04:31:39 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 04:31:39 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 04:31:39 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 11:23:00 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 11:23:00 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 11:23:00 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 11:23:01 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 11:23:01 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 11:23:01 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 11:23:01 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 11:23:01 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 11:23:01 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 11:23:01 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 11:35:34 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 11:35:34 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 11:35:34 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 11:35:34 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 11:35:34 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 11:35:35 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 11:35:35 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 11:35:35 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 11:35:35 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 11:35:35 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 11:48:31 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 11:48:31 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 11:48:31 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 11:48:32 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 11:48:32 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 11:48:32 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 11:48:32 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 11:48:32 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 11:48:32 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 11:48:32 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 11:49:21 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 11:49:21 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 11:49:21 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 11:49:22 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 11:49:22 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 11:49:22 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 11:49:22 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 11:49:22 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 11:49:22 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 11:49:22 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=0s pick=0s pickResult=nano | Counter=0
+2026-03-12 11:56:28 | TEST-BEFORE | Goal=Attrset decision menu for eclipses using W select-all | Counter=0
+2026-03-12 11:56:28 | TEST-AFTER | Result=PASS attrset decision selected expected children | Counter=0
+2026-03-12 11:56:28 | TEST-BEFORE | Goal=True repeated owner-search menu-A->menu-B flow with persistent owner annotations | Counter=0
+2026-03-12 11:56:28 | TEST-AFTER | Result=PASS repeated owner-search stayed in menu A, invoked menu B twice, and returned combined selections | Counter=0
+2026-03-12 11:56:28 | TEST-BEFORE | Goal=Edge token validation | Counter=0
+2026-03-12 11:56:28 | TEST-AFTER | Result=PASS invalid token rejected | Counter=0
+2026-03-12 11:56:28 | TEST-BEFORE | Goal=Description cache reuse | Counter=0
+2026-03-12 11:56:28 | TEST-AFTER | Result=PASS description cache files present | Counter=0
+2026-03-12 11:56:28 | TEST-BEFORE | Goal=Timing probes for core command paths | Counter=0
+2026-03-12 11:56:29 | TEST-AFTER | Result=PASS timings ensure_index=0s attrset=1s pick=0s pickResult=nano | Counter=0
