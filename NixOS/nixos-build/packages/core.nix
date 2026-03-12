@@ -1,0 +1,32 @@
+{ pkgs }:
+with pkgs; [
+  alacritty
+  fish
+  zsh
+  pipewire
+  starship
+  git
+  bash
+  #libsForQt5.qtmultimedia
+  gh
+  wget
+  htop
+  vim
+  neovim
+  fastfetch
+  overskride
+  blueman
+  tree
+  efibootmgr
+  btop
+  os-prober
+  mesa-demos
+  pciutils
+  usbutils
+  dmidecode
+  lm_sensors
+  hwinfo
+  lshw
+  flatpak
+  fzf
+]
