@@ -1,3 +1,5 @@
+# Tak_OS · waybar-weather.nix — Waybar weather widget dependencies
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { lib, buildGoModule, fetchFromGitHub }:
 
 buildGoModule rec {

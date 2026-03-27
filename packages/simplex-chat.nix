@@ -1,3 +1,5 @@
+# Tak_OS · simplex-chat.nix — SimpleX Chat messenger
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 [

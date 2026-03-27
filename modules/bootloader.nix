@@ -1,3 +1,5 @@
+# Tak_OS · bootloader.nix — GRUB / systemd-boot configuration
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

@@ -1,3 +1,5 @@
+# Tak_OS · media.nix — Audio/video players, image viewers, screen recorders
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

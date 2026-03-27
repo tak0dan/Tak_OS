@@ -1,3 +1,5 @@
+# Tak_OS · nixowos.nix — NixOwOS branding overlay — os-release + fastfetch logo
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 # =============================================================================
 #                           NixOwOS Integration (uwu)
 # =============================================================================

@@ -339,3 +339,10 @@
 [2026-03-23 08:53:20] [CMD] printf '\n  ✓ %s\n' "$msg"
 [2026-03-23 08:53:20] [CMD] printf '\n  ✓ %s\n' "$msg"
 [2026-03-23 08:53:20] [EXIT] main status=0
+
+[2026-03-27 12:14:35] [SESSION] pid=285242 user=root pwd=/home/tak_1
+[2026-03-27 12:14:35] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-27 12:14:35] [CMD] main "$@"
+[2026-03-27 12:14:35] [ARGS] argv=install
+[2026-03-27 12:14:43] [SELECT] transaction_menu.choice => 1
+[2026-03-27 12:14:56] [EXIT] main status=1

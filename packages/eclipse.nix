@@ -1,3 +1,5 @@
+# Tak_OS · eclipse.nix — Eclipse IDE variants
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 #{ pkgs }:
 #
 #let

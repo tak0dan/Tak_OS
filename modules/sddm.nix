@@ -1,3 +1,5 @@
+# Tak_OS · sddm.nix — SDDM display manager and login screen background
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 {
   lib,
   pkgs,

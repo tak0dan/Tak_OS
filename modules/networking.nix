@@ -1,3 +1,5 @@
+# Tak_OS · networking.nix — NetworkManager, hostname, and WiFi
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, lib, ... }:
 
 {

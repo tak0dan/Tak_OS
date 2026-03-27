@@ -1,3 +1,5 @@
+# Tak_OS · rebuild-error-hook.nix — Post-rebuild error notification hook
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 # =============================================================================
 #  modules/rebuild-error-hook.nix
 #

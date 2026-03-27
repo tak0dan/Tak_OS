@@ -1,3 +1,5 @@
+# Tak_OS · hm-home-scaffold.nix — Default home.nix template written to ~/.hm-local/
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 # ~/.hm-local/home.nix — per-user Home Manager config
 #
 # NOTE: home.username, home.homeDirectory, and home.stateVersion

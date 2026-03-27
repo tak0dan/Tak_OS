@@ -1,3 +1,5 @@
+# Tak_OS · core.nix — Essential CLI tools and base utilities
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

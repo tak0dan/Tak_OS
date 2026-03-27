@@ -1,3 +1,5 @@
+# Tak_OS · development.nix — Compilers, debuggers, and dev toolchains
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

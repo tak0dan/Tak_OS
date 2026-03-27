@@ -1,3 +1,5 @@
+# Tak_OS · nixos-hyprland.nix — NixOS Hyprland integration layer packages
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

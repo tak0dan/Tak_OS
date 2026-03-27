@@ -1,3 +1,5 @@
+# Tak_OS · grub-theme.nix — GRUB visual theme
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

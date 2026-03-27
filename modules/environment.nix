@@ -1,3 +1,5 @@
+# Tak_OS · environment.nix — Session environment variables
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

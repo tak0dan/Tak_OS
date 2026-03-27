@@ -1,3 +1,5 @@
+# Tak_OS · window-managers.nix — Hyprland, bspwm, i3, and xkb layout (loaded with features.hyprland)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, features, ... }:
 
 {

@@ -23,7 +23,7 @@ prepare_dirs
 source "$ROOT/lib/cli.sh"
 
 # Load all libraries
-for lib in utils lock gen hub rebuild index merge; do
+for lib in utils lock gen hub rebuild index merge observe; do
   source "$ROOT/lib/$lib.sh"
 done
 
@@ -32,10 +32,13 @@ enable_nixorcist_trace
 trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
 
 main() {
-  local command="${1:-help}"
+  local command="${1:-tui}"
   nixorcist_trace "ARGS" "argv=$*"
 
   case "$command" in
+    tui|"")
+      main_menu
+      ;;
     transaction)
       show_header "Transaction Builder"
       run_transaction_cli
@@ -77,15 +80,15 @@ main() {
       ;;
     install|add|download)
       if [[ $# -lt 2 ]]; then
-        show_error "install requires package arguments"
-        echo "Usage: nixorcist install <pkg ...>"
-        return 1
+        show_header "Package Selection (Interactive)"
+        select_packages
+      else
+        show_header "Install from arguments"
+        shift
+        install_from_args "$@"
       fi
-      show_header "Install from arguments"
-      shift
-      install_from_args "$@"
       ;;
-    delete|selecte|uninstall|remove)
+    delete|uninstall|remove)
       if [[ $# -lt 2 ]]; then
         show_error "delete requires package arguments"
         echo "Usage: nixorcist delete <pkg ...>"
@@ -130,6 +133,23 @@ main() {
       fi
       show_header "Merging All Packages"
       merge_packages "$2"
+      ;;
+    status)
+      show_header "System Package Status"
+      show_status
+      ;;
+    trace)
+      if [[ -z "${2:-}" ]]; then
+        show_error "trace requires a package name"
+        echo "Usage: nixorcist trace <pkg>"
+        return 1
+      fi
+      show_header "Package Trace: $2"
+      trace_package "$2"
+      ;;
+    diff)
+      show_header "Layer Diff"
+      diff_layers
       ;;
     help|-h|--help)
       show_logo

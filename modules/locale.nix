@@ -1,3 +1,5 @@
+# Tak_OS · locale.nix — Timezone, locale, and keyboard layout
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

@@ -363,20 +363,40 @@ show_yes_no_prompt() {
 show_menu() {
   show_section_header 'Command Help'
   printf '  Usage: nixorcist <command> [args]\n\n'
-  show_menu_item 'transaction' 'Interactive transaction builder'
-  show_menu_item 'select' 'Alias for interactive transaction flow'
-  show_menu_item 'import <file>' 'Import packages from a file'
-  show_menu_item 'install <pkg...>' 'Add package(s) from CLI args'
-  show_menu_item 'delete <pkg...>' 'Remove package(s) from CLI args'
-  show_menu_item 'chant <tokens...>' 'Mixed install/delete tokens'
-  show_menu_item 'gen' 'Generate package modules'
-  show_menu_item 'hub' 'Regenerate all-packages hub'
-  show_menu_item 'rebuild' 'Generate + rebuild NixOS'
-  show_menu_item 'refresh-index' 'Rebuild cached package index'
-  show_menu_item 'purge' 'Remove generated modules and clear lock'
-  show_menu_item 'merge <name>' 'Merge all packages into one named declaration'
-  show_menu_item 'all [--refresh-index]' 'Transaction + generate + hub + rebuild'
-  show_menu_item 'help' 'Show this help screen'
+
+  printf '  ── Package management ─────────────────────────────────────────\n'
+  show_menu_item 'install [pkg...]'    'Add package(s); opens TUI picker when no args'
+  show_menu_item 'delete <pkg...>'    'Remove package(s) from CLI args'
+  show_menu_item 'chant <tokens...>'  'Mixed install/delete tokens (+add / -remove)'
+  show_menu_item 'import <file>'      'Import packages from a file'
+  show_menu_item 'transaction'        'Interactive transaction builder (TUI)'
+  echo
+
+  printf '  ── Build pipeline ─────────────────────────────────────────────\n'
+  show_menu_item 'gen'                'Generate Nix modules from lock'
+  show_menu_item 'hub'                'Regenerate all-packages hub'
+  show_menu_item 'rebuild'            'gen + hub + NixOS rebuild (with error resolver)'
+  show_menu_item 'all [--refresh-index]' 'Transaction + gen + hub + rebuild'
+  echo
+
+  printf '  ── Observability ──────────────────────────────────────────────\n'
+  show_menu_item 'status'             'Snapshot: CLI layer vs config layer + overlaps'
+  show_menu_item 'diff'               'Diff: CLI-only / config-only / duplicates'
+  show_menu_item 'trace <pkg>'        'Trace: all locations where a package is declared'
+  echo
+
+  printf '  ── Utilities ──────────────────────────────────────────────────\n'
+  show_menu_item 'merge <name>'       'Merge all lock packages into one .nix file'
+  show_menu_item 'refresh-index'      'Rebuild cached nixpkgs package index'
+  show_menu_item 'purge'              'Remove all generated modules and clear lock'
+  show_menu_item 'help'               'Show this help screen'
+  echo
+
+  printf '  ── Lifecycle model ────────────────────────────────────────────\n'
+  printf '  %-28s %s\n' '  nixorcist install <pkg>'  '→ adds to generated layer'
+  printf '  %-28s %s\n' '  nixorcist merge my-pkgs'  '→ consolidates generated layer'
+  printf '  %-28s %s\n' '  (copy to config manually)' '→ promotes to declarative layer'
+  printf '  %-28s %s\n' '  nixorcist purge'          '→ clears generated layer'
   echo
 }
 

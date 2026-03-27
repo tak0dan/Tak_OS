@@ -1,3 +1,5 @@
+# Tak_OS · configuration.nix — System entry point — feature flags and module wiring
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, lib, ... }:
 
 # =============================================================================

@@ -1,3 +1,5 @@
+# Tak_OS · hyprland.nix — Hyprland WM specific packages (waybar, rofi, dunst, swww)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

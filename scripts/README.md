@@ -1,16 +1,19 @@
 # scripts/ — Build & Deployment Helpers
 
-> Part of [Tak_OS](https://github.com/tak0dan/Tak_OS) · parent: [`/etc/nixos/`](../README.md)
+> Part of [Tak\_OS](https://github.com/tak0dan/Tak_OS) · parent: [`/etc/nixos/`](../README.md)  
+> **License:** GNU GPLv3
 
 ---
+
+## Directory Map
 
 ```
 scripts/
 ├── nix-rebuild-smart.sh             ← interactive rebuild with error resolver
 ├── nixos-rebuild                    ← thin wrapper around nixos-rebuild
 ├── nixos-rebuild-error-listener.sh  ← background listener for rebuild errors
-├── nixos-comment.sh                 ← comment out lines in .nix files
-├── nixos-uncomment.sh               ← uncomment lines in .nix files
+├── nixos-comment.sh                 ← comment out a package name in .nix files
+├── nixos-uncomment.sh               ← uncomment a package name in .nix files
 └── deploy-to-etc-nixos.sh           ← deploy repo contents into /etc/nixos
 ```
 
@@ -18,8 +21,9 @@ scripts/
 
 ## Description
 
-These scripts extend and simplify the standard NixOS rebuild workflow. They are
-not part of the Nix evaluation — they are plain Bash tools run by the user.
+These scripts extend and simplify the standard NixOS rebuild workflow.
+They are plain Bash tools run by the user — they are not part of Nix
+evaluation and have no effect on the system configuration itself.
 
 ---
 
@@ -35,6 +39,8 @@ The primary rebuild helper. Wraps `nixos-rebuild switch` with a retry loop that:
 6. Retries up to 5 times.
 
 ```bash
+sudo nixos-smart-rebuild
+# or directly:
 sudo bash /etc/nixos/scripts/nix-rebuild-smart.sh
 ```
 
@@ -61,23 +67,33 @@ sudo /etc/nixos/scripts/nixos-rebuild dry-activate
 ### `nixos-rebuild-error-listener.sh`
 
 Background daemon that watches the systemd journal for rebuild error events
-and triggers a desktop notification or hook defined in `modules/rebuild-error-hook.nix`.
+and triggers a desktop notification or hook defined in
+`modules/rebuild-error-hook.nix`.
 
-Started automatically when that module is imported. Not meant to be run manually.
+Started automatically when that module is imported. Not meant to be run
+manually.
 
 ---
 
 ### `nixos-comment.sh` / `nixos-uncomment.sh`
 
-Utility pair for toggling lines in `.nix` files. Useful when switching between
-GPU profiles, kernel param sets, or experimental modules without deleting content.
+Utility pair for toggling package names in `packages/disabled/disabled-packages.nix`.
+This is the preferred way to disable a package globally without deleting it.
 
 ```bash
-# Comment out a specific import line
-sudo bash /etc/nixos/scripts/nixos-comment.sh configuration.nix "./modules/nvidia-drivers.nix"
+# Disable a package globally
+sudo nixos-comment   discord
 
-# Uncomment it again
-sudo bash /etc/nixos/scripts/nixos-uncomment.sh configuration.nix "./modules/nvidia-drivers.nix"
+# Re-enable it
+sudo nixos-uncomment discord
+```
+
+Under the hood, these scripts modify the disabled list file and trigger
+a rebuild. They are also the backing implementation of:
+
+```bash
+# nixorcist wraps these internally
+nixorcist status    # shows which packages are disabled
 ```
 
 ---
@@ -100,19 +116,15 @@ sudo bash /etc/nixos/scripts/deploy-to-etc-nixos.sh
 
 ## Code of Conduct
 
-- Scripts must be POSIX-safe Bash (`set -euo pipefail`).
+- Scripts must be safe Bash (`set -euo pipefail`).
 - Scripts that write to `/etc/nixos` must create a backup first.
 - Do not hard-code usernames or paths — use `$SUDO_USER`, `$HOME`, `$CONFIG_DIR`.
 - Keep scripts idempotent where possible.
+- Scripts may read from `/etc/nixos` freely but must not modify
+  `configuration.nix`, `modules/`, or `packages/` outside of explicit
+  user-initiated operations (comment/uncomment tools).
 
 ---
 
-## Upgrade Guide
-
-```bash
-# If a script breaks after a NixOS upgrade, check for renamed tools:
-nix-locate --whole-name <tool>
-
-# Update the nixorcist index used by nix-rebuild-smart.sh:
-sudo nixorcist refresh-index
-```
+*Tak_OS — declarative, modular, yours.*  
+*© 2026 tak0dan · GNU GPLv3 · https://github.com/tak0dan/Tak_OS*

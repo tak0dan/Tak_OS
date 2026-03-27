@@ -1,3 +1,5 @@
+# Tak_OS · zsh.nix — Zsh plugins and shell productivity tools
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

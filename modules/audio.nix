@@ -1,3 +1,5 @@
+# Tak_OS · audio.nix — PipeWire audio stack (ALSA + PulseAudio compat + rtkit)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, ... }:
 
 {

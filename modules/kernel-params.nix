@@ -1,3 +1,5 @@
+# Tak_OS · kernel-params.nix — Active kernel params (managed by gpu.nix)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, lib, ... }:
 
 {

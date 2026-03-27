@@ -1,3 +1,5 @@
+# Tak_OS · games.nix — Native Linux games and emulators
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [

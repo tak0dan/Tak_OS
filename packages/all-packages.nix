@@ -1,3 +1,5 @@
+# Tak_OS · all-packages.nix — Master package group import hub
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 # =============================================================================

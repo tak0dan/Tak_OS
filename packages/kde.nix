@@ -1,3 +1,5 @@
+# Tak_OS · kde.nix — KDE Plasma specific packages
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs }:
 
 with pkgs; [
