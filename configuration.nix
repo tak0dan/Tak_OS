@@ -186,6 +186,10 @@ let
       # "alice"
       # "bob"
     ];
+    # State version passed to every HM profile. Bump this when you intentionally
+    # upgrade home-manager and have read the release notes.
+    # Must match a value accepted by home.stateVersion (see modules/hm-users.nix).
+    home-manager-state-version = "25.11";
 
     # =========================================================================
     # 🤖 GITHUB COPILOT CLI

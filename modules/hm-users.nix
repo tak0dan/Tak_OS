@@ -38,7 +38,7 @@
     {
       home.username                  = user;
       home.homeDirectory             = "/home/${user}";
-      home.stateVersion              = lib.mkDefault "25.11";
+      home.stateVersion              = lib.mkDefault features.home-manager-state-version;
       home.enableNixpkgsReleaseCheck = false;
       imports                        = lib.optionals (hmFile != null) [ hmFile ];
       home.packages                  = [ pkgs.git ]; # baseline — always present
