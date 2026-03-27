@@ -41,12 +41,13 @@
         if [ ! -s "/home/${user}/.hm-local/home.nix" ]; then
           echo "[!] /home/${user}/.hm-local/home.nix is empty — recreating scaffold"
           _needs_scaffold=1
-        elif ! command -v nix-instantiate > /dev/null 2>&1; then
-          echo "[!] nix-instantiate not in PATH — skipping syntax check"
-        elif ! nix-instantiate --parse "/home/${user}/.hm-local/home.nix" \
+        else
+          _nix_inst=$(command -v nix-instantiate 2>/dev/null || echo /run/current-system/sw/bin/nix-instantiate)
+          if ! "$_nix_inst" --parse "/home/${user}/.hm-local/home.nix" \
                > /dev/null 2>&1; then
-          echo "[!] /home/${user}/.hm-local/home.nix has a syntax error — recreating scaffold"
-          _needs_scaffold=1
+            echo "[!] /home/${user}/.hm-local/home.nix has a syntax error — recreating scaffold"
+            _needs_scaffold=1
+          fi
         fi
       fi
 
