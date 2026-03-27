@@ -15,7 +15,7 @@
 #
 # Each profile:
 #   • Sets home.username / home.homeDirectory from the name alone.
-#   • Sets home.stateVersion — do not redefine in home.nix.
+#   • Sets home.stateVersion via lib.mkDefault — safe to override in home.nix.
 #   • Imports /home/<user>/.hm-local/home.nix    (preferred)
 #          or /home/<user>/.hm-local/default.nix  (fallback)
 #   • Falls back to a baseline (just git) when neither file exists.
@@ -38,7 +38,7 @@
     {
       home.username                  = user;
       home.homeDirectory             = "/home/${user}";
-      home.stateVersion              = "25.11";
+      home.stateVersion              = lib.mkDefault "25.11";
       home.enableNixpkgsReleaseCheck = false;
       imports                        = lib.optionals (hmFile != null) [ hmFile ];
       home.packages                  = [ pkgs.git ]; # baseline — always present

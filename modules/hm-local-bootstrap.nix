@@ -41,6 +41,8 @@
         if [ ! -s "/home/${user}/.hm-local/home.nix" ]; then
           echo "[!] /home/${user}/.hm-local/home.nix is empty — recreating scaffold"
           _needs_scaffold=1
+        elif ! command -v nix-instantiate > /dev/null 2>&1; then
+          echo "[!] nix-instantiate not in PATH — skipping syntax check"
         elif ! nix-instantiate --parse "/home/${user}/.hm-local/home.nix" \
                > /dev/null 2>&1; then
           echo "[!] /home/${user}/.hm-local/home.nix has a syntax error — recreating scaffold"
@@ -49,8 +51,10 @@
       fi
 
       if [ "$_needs_scaffold" = "1" ]; then
-        cat > "/home/${user}/.hm-local/home.nix" << 'HMEOF'
+        _hm_tmp=$(mktemp "/home/${user}/.hm-local/.home.nix.XXXXXX")
+        cat > "$_hm_tmp" << 'HMEOF'
 ${builtins.readFile ./hm-home-scaffold.nix}HMEOF
+        mv -f "$_hm_tmp" "/home/${user}/.hm-local/home.nix"
         echo "[*] Wrote /home/${user}/.hm-local/home.nix (scaffold)"
       fi
 
