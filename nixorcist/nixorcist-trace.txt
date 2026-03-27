@@ -1,0 +1,341 @@
+
+[2026-03-12 10:37:37] [SESSION] pid=130950 user=root pwd=/home/tak_1/WtfOS
+[2026-03-12 10:37:37] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 10:37:37] [CMD] main "$@"
+[2026-03-12 10:37:37] [ARGS] argv=refresh-index
+
+[2026-03-12 10:41:24] [SESSION] pid=149093 user=root pwd=/home/tak_1/WtfOS
+[2026-03-12 10:41:24] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 10:41:24] [CMD] main "$@"
+[2026-03-12 10:41:24] [ARGS] argv=all
+[2026-03-12 10:49:51] [SELECT] transaction_menu.choice => 1
+[2026-03-12 10:50:04] [EXIT] main status=0
+[2026-03-12 11:05:44] [EXIT] main status=0
+[2026-03-12 11:08:18] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 11:08:18] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 11:08:18] [EXIT] main status=0
+
+[2026-03-12 11:13:20] [SESSION] pid=266362 user=root pwd=/home/tak_1/WtfOS
+[2026-03-12 11:13:20] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:13:20] [CMD] main "$@"
+[2026-03-12 11:13:20] [ARGS] argv=all
+[2026-03-12 11:13:36] [SELECT] transaction_menu.choice => 0
+[2026-03-12 11:13:37] [CMD] return 1
+[2026-03-12 11:13:37] [CMD] return 1
+[2026-03-12 11:13:37] [EXIT] main status=1
+
+[2026-03-12 11:16:05] [SESSION] pid=269145 user=root pwd=/home/tak_1/WtfOS
+[2026-03-12 11:16:05] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:16:05] [CMD] main "$@"
+[2026-03-12 11:16:05] [ARGS] argv=all
+[2026-03-12 11:16:10] [SELECT] transaction_menu.choice => 0
+[2026-03-12 11:16:11] [CMD] return 1
+[2026-03-12 11:16:11] [CMD] return 1
+[2026-03-12 11:16:11] [EXIT] main status=1
+
+[2026-03-12 11:16:24] [SESSION] pid=269586 user=root pwd=/home/tak_1/WtfOS
+[2026-03-12 11:16:24] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:16:24] [CMD] main "$@"
+[2026-03-12 11:16:24] [ARGS] argv=all
+[2026-03-12 11:18:43] [SELECT] transaction_menu.choice => 7
+
+[2026-03-12 11:37:12] [SESSION] pid=329276 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 11:37:12] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:37:12] [CMD] main "$@"
+[2026-03-12 11:37:12] [ARGS] argv=all
+[2026-03-12 11:40:12] [EXIT] main status=0
+
+[2026-03-12 11:40:35] [SESSION] pid=338899 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 11:40:35] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:40:35] [CMD] main "$@"
+[2026-03-12 11:40:35] [ARGS] argv=all
+[2026-03-12 11:40:52] [SELECT] transaction_menu.choice => 1
+[2026-03-12 11:41:15] [EXIT] main status=0
+[2026-03-12 11:41:32] [SELECT] wait_for_key => ENTER
+[2026-03-12 11:41:35] [SELECT] transaction_menu.choice => 1
+
+[2026-03-12 11:51:52] [SESSION] pid=368862 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 11:51:52] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:51:52] [CMD] main "$@"
+[2026-03-12 11:51:52] [ARGS] argv=all
+[2026-03-12 11:52:39] [SELECT] transaction_menu.choice => 6
+[2026-03-12 11:52:43] [SELECT] transaction_menu.install_query.confirm => n
+[2026-03-12 11:52:45] [SELECT] transaction_menu.choice => 1
+[2026-03-12 11:53:45] [EXIT] main status=1
+
+[2026-03-12 11:53:46] [SESSION] pid=374299 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 11:53:46] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 11:53:46] [CMD] main "$@"
+[2026-03-12 11:53:46] [ARGS] argv=all
+[2026-03-12 11:58:42] [SELECT] transaction_menu.choice => 0
+[2026-03-12 11:58:43] [CMD] return 1
+[2026-03-12 11:58:43] [CMD] return 1
+[2026-03-12 11:58:43] [EXIT] main status=1
+
+[2026-03-12 12:04:23] [SESSION] pid=400843 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 12:04:23] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 12:04:23] [CMD] main "$@"
+[2026-03-12 12:04:23] [ARGS] argv=all
+[2026-03-12 12:04:44] [QUERY] mode=add token=perl5Packages.PlackMiddlewareFixMissingBodyInRedirect
+[2026-03-12 12:04:53] [SELECT] transaction_menu.choice => 6
+[2026-03-12 12:04:55] [SELECT] transaction_menu.install_query.confirm => y
+[2026-03-12 12:05:00] [APPLY] begin add=1 remove=0 lock=27
+[2026-03-12 12:05:00] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,python,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,nano,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-12 12:05:00] [APPLY] final_count=28
+[2026-03-12 12:05:17] [SELECT] transaction_menu.choice => 1
+[2026-03-12 12:05:38] [EXIT] main status=1
+
+[2026-03-12 12:05:39] [SESSION] pid=403834 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 12:05:40] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 12:05:40] [CMD] main "$@"
+[2026-03-12 12:05:40] [ARGS] argv=all
+[2026-03-12 12:05:42] [SELECT] transaction_menu.choice => 7
+
+[2026-03-12 12:12:48] [SESSION] pid=424566 user=root pwd=/home/tak_1
+[2026-03-12 12:12:48] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 12:12:48] [CMD] main "$@"
+[2026-03-12 12:12:48] [ARGS] argv=all
+[2026-03-12 12:32:54] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 12:32:54] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 12:32:54] [EXIT] main status=0
+[2026-03-12 12:34:37] [SELECT] wait_for_key => ENTER
+[2026-03-12 12:34:40] [SELECT] transaction_menu.choice => 1
+[2026-03-12 12:35:01] [SELECT] transaction_menu.choice => 6
+[2026-03-12 12:35:04] [SELECT] transaction_menu.install_query.confirm => y
+[2026-03-12 12:35:04] [APPLY] begin add=0 remove=0 lock=28
+[2026-03-12 12:35:04] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,python,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,nano,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-12 12:35:04] [APPLY] final_count=28
+[2026-03-12 12:38:05] [CMD] return 1
+[2026-03-12 12:38:05] [CMD] return 1
+[2026-03-12 12:38:05] [EXIT] main status=1
+
+[2026-03-12 12:42:54] [SESSION] pid=520947 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 12:42:54] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 12:42:54] [CMD] main "$@"
+[2026-03-12 12:42:54] [ARGS] argv=chant -python +python3
+[2026-03-12 12:42:54] [QUERY] mode=add token=python3
+[2026-03-12 12:42:54] [QUERY] mode=remove token=python
+[2026-03-12 16:03:17] [SELECT] args.install_confirm.Chant => <empty>
+[2026-03-12 16:03:17] [APPLY] begin add=1 remove=1 lock=28
+[2026-03-12 16:03:17] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,nano,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-12 16:03:17] [APPLY] final_count=27
+[2026-03-12 16:03:17] [CMD] return 0
+[2026-03-12 16:03:17] [CMD] return 0
+[2026-03-12 16:03:17] [EXIT] main status=0
+
+[2026-03-12 16:03:59] [SESSION] pid=550246 user=root pwd=/home/tak_1/WtfOS/NixOS/nixos-build
+[2026-03-12 16:03:59] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-12 16:03:59] [CMD] main "$@"
+[2026-03-12 16:04:00] [ARGS] argv=rebuild
+[2026-03-12 16:07:00] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 16:07:00] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-12 16:07:00] [EXIT] main status=0
+
+[2026-03-16 20:45:43] [SESSION] pid=2359 user=root pwd=/home/tak_1
+[2026-03-16 20:45:43] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-16 20:45:43] [CMD] main "$@"
+[2026-03-16 20:45:43] [ARGS] argv=rebuild
+
+[2026-03-18 10:19:03] [SESSION] pid=3558 user=root pwd=/home/tak_1
+[2026-03-18 10:19:03] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 10:19:03] [CMD] main "$@"
+[2026-03-18 10:19:03] [ARGS] argv=rebuild
+[2026-03-18 10:32:03] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 10:32:03] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 10:32:03] [EXIT] main status=0
+
+[2026-03-18 10:36:49] [SESSION] pid=44473 user=root pwd=/etc/nixos
+[2026-03-18 10:36:49] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 10:36:49] [CMD] main "$@"
+[2026-03-18 10:36:49] [ARGS] argv=rebuild
+[2026-03-18 10:40:27] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 10:40:27] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 10:40:27] [EXIT] main status=0
+
+[2026-03-18 11:55:19] [SESSION] pid=142755 user=root pwd=/home/tak_1
+[2026-03-18 11:55:19] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 11:55:19] [CMD] main "$@"
+[2026-03-18 11:55:19] [ARGS] argv=
+[2026-03-18 11:55:44] [SELECT] main_menu.choice => 2
+[2026-03-18 11:55:55] [SELECT] import_file_flow.file_path => /home/tak_1/a.txt
+[2026-03-18 11:56:43] [SELECT] missing_package.resolve_choice.pip => ifconfig
+[2026-03-18 11:56:54] [SELECT] import.review_transaction => <empty>
+[2026-03-18 12:01:56] [SELECT] transaction_menu.choice => 6
+[2026-03-18 12:01:58] [SELECT] transaction_menu.install_query.confirm => y
+[2026-03-18 12:01:58] [APPLY] begin add=3 remove=0 lock=27
+[2026-03-18 12:01:58] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,python,bat,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 12:01:58] [APPLY] final_count=28
+[2026-03-18 12:02:04] [SELECT] import.run_full_pipeline => y
+[2026-03-18 12:03:32] [SELECT] wait_for_key => ENTER
+[2026-03-18 12:06:01] [SELECT] main_menu.choice => 1
+[2026-03-18 12:06:04] [SELECT] transaction_menu.choice => 2
+[2026-03-18 12:06:15] [QUERY] mode=remove token=python
+[2026-03-18 12:06:37] [SELECT] transaction_menu.choice => 6
+[2026-03-18 12:06:38] [SELECT] transaction_menu.install_query.confirm => y
+[2026-03-18 12:06:50] [APPLY] begin add=0 remove=1 lock=28
+[2026-03-18 12:06:50] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,bat,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 12:06:50] [APPLY] final_count=27
+[2026-03-18 12:06:56] [SELECT] transaction_builder_flow.choice => 1
+[2026-03-18 12:07:30] [SELECT] wait_for_key => ENTER
+[2026-03-18 12:07:36] [SELECT] main_menu.choice => 4
+[2026-03-18 12:07:44] [SELECT] wait_for_key => ENTER
+[2026-03-18 12:07:49] [SELECT] main_menu.choice => 1
+[2026-03-18 12:07:52] [SELECT] transaction_menu.choice => 6
+[2026-03-18 12:07:54] [SELECT] transaction_menu.install_query.confirm => y
+[2026-03-18 12:07:54] [APPLY] begin add=0 remove=0 lock=27
+[2026-03-18 12:07:54] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,bat,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 12:07:54] [APPLY] final_count=27
+[2026-03-18 12:07:58] [SELECT] transaction_builder_flow.choice => 1
+[2026-03-18 12:08:26] [SELECT] wait_for_key => ENTER
+[2026-03-18 12:08:28] [SELECT] main_menu.choice => 0
+[2026-03-18 12:08:28] [EXIT] main status=0
+
+[2026-03-18 12:08:38] [SESSION] pid=154677 user=root pwd=/home/tak_1
+[2026-03-18 12:08:38] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 12:08:38] [CMD] main "$@"
+[2026-03-18 12:08:38] [ARGS] argv=chant -python +python3
+[2026-03-18 12:08:38] [QUERY] mode=add token=python3
+[2026-03-18 12:08:38] [QUERY] mode=remove token=python
+[2026-03-18 12:09:00] [SELECT] args.install_confirm.Chant => <empty>
+[2026-03-18 12:09:00] [APPLY] begin add=1 remove=1 lock=27
+[2026-03-18 12:09:00] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,bat,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 12:09:00] [APPLY] final_count=27
+[2026-03-18 12:09:00] [CMD] return 0
+[2026-03-18 12:09:00] [CMD] return 0
+[2026-03-18 12:09:00] [EXIT] main status=0
+
+[2026-03-18 12:09:20] [SESSION] pid=155515 user=root pwd=/home/tak_1
+[2026-03-18 12:09:20] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 12:09:20] [CMD] main "$@"
+[2026-03-18 12:09:20] [ARGS] argv=rebuild
+[2026-03-18 12:11:06] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 12:11:06] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 12:11:06] [EXIT] main status=0
+
+[2026-03-18 14:20:57] [SESSION] pid=250211 user=root pwd=/home/tak_1
+[2026-03-18 14:20:57] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 14:20:57] [CMD] main "$@"
+[2026-03-18 14:20:57] [ARGS] argv=import a.txt
+[2026-03-18 14:21:47] [SELECT] missing_package.resolve_choice.pip => ifconfig
+[2026-03-18 14:22:25] [SELECT] import.apply_confirm => r
+[2026-03-18 14:22:26] [APPLY] begin add=3 remove=0 lock=27
+[2026-03-18 14:22:26] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,python,bat,swww,steam,docker,eclipses.eclipse-sdk,eclipse-mat,eclipses.eclipse-modeling,blueman,flatpak,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 14:22:26] [APPLY] final_count=28
+[2026-03-18 14:22:26] [EXIT] main status=127
+
+[2026-03-18 14:56:05] [SESSION] pid=275921 user=root pwd=/home/tak_1
+[2026-03-18 14:56:05] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 14:56:05] [CMD] main "$@"
+[2026-03-18 14:56:05] [ARGS] argv=import a.txt
+[2026-03-18 14:58:29] [SELECT] missing_package.resolve_choice.pip => 3
+[2026-03-18 15:01:23] [SELECT] missing_package.resolve_choice.ifconfig => 1
+[2026-03-18 15:01:29] [SELECT] import.apply_confirm => r
+[2026-03-18 15:01:36] [APPLY] begin add=6 remove=0 lock=28
+[2026-03-18 15:01:36] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,python,bat,swww,steam,docker,eclipses.eclipse-sdk,unixtools.ifconfig,eclipse-mat,eclipses.eclipse-modeling,python313Packages.ifconfig-parser,blueman,flatpak,python314Packages.ifconfig-parser,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,eclipses.eclipse-committers
+[2026-03-18 15:01:36] [APPLY] final_count=31
+[2026-03-18 15:02:05] [EXIT] main status=1
+
+[2026-03-18 15:04:28] [SESSION] pid=284808 user=root pwd=/home/tak_1
+[2026-03-18 15:04:28] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 15:04:28] [CMD] main "$@"
+[2026-03-18 15:04:28] [ARGS] argv=import a.txt
+[2026-03-18 15:05:37] [SELECT] missing_package.choice.pip => 1
+[2026-03-18 15:06:17] [SELECT] missing_package.choice.ifconfig => 1
+[2026-03-18 15:06:19] [SELECT] import.apply_confirm => r
+[2026-03-18 15:06:22] [APPLY] begin add=4 remove=1 lock=31
+[2026-03-18 15:06:22] [APPLY_FINAL_ITEMS] discover-overlay,eclipses.eclipse-embedcpp,libsForQt5.qtmultimedia,krita,gtk-pipe-viewer,nodejs,eclipses.eclipse-jee,adw-bluetooth,pnpm,eclipses.eclipse-dsl,bat,swww,steam,docker,eclipses.eclipse-sdk,unixtools.ifconfig,eclipse-mat,eclipses.eclipse-modeling,python313Packages.ifconfig-parser,blueman,flatpak,python314Packages.ifconfig-parser,eclipses.eclipse-java,python3,eclipses.eclipse-platform,wallust,eclipses.eclipse-cpp,perl5Packages.PlackMiddlewareFixMissingBodyInRedirect,eclipses.eclipse-rcp,python313Packages.pip,eclipses.eclipse-committers
+[2026-03-18 15:06:22] [APPLY] final_count=31
+[2026-03-18 15:09:28] [CMD] rm -f "$TX_FILE"
+[2026-03-18 15:09:28] [CMD] rm -f "$TX_FILE"
+[2026-03-18 15:09:28] [EXIT] main status=0
+
+[2026-03-18 15:19:00] [SESSION] pid=298858 user=root pwd=/home/tak_1
+[2026-03-18 15:19:00] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 15:19:00] [CMD] main "$@"
+[2026-03-18 15:19:00] [ARGS] argv=
+[2026-03-18 15:19:01] [EXIT] main status=1
+
+[2026-03-18 15:22:38] [SESSION] pid=301565 user=root pwd=/home/tak_1
+[2026-03-18 15:22:38] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-18 15:22:38] [CMD] main "$@"
+[2026-03-18 15:22:39] [ARGS] argv=
+[2026-03-18 15:23:08] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 15:23:08] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-18 15:23:08] [EXIT] main status=0
+
+[2026-03-19 15:30:18] [SESSION] pid=1337327 user=root pwd=/home/tak_1
+[2026-03-19 15:30:18] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-19 15:30:18] [CMD] main "$@"
+[2026-03-19 15:30:18] [ARGS] argv=
+[2026-03-19 15:30:33] [SELECT] wait_for_key => ENTER
+[2026-03-19 15:30:34] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-19 15:30:34] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-19 15:30:35] [EXIT] main status=0
+
+[2026-03-23 08:35:53] [SESSION] pid=33882 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:35:53] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:35:53] [CMD] main "$@"
+[2026-03-23 08:35:53] [ARGS] argv=merge
+[2026-03-23 08:35:53] [CMD] return 1
+[2026-03-23 08:35:53] [CMD] return 1
+[2026-03-23 08:35:53] [EXIT] main status=1
+
+[2026-03-23 08:36:06] [SESSION] pid=34198 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:36:06] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:36:06] [CMD] main "$@"
+[2026-03-23 08:36:06] [ARGS] argv=merge autogenerated
+[2026-03-23 08:37:36] [CMD] printf '  %s %s\n' "$prefix" "$msg"
+[2026-03-23 08:37:36] [CMD] printf '  %s %s\n' "$prefix" "$msg"
+[2026-03-23 08:37:36] [EXIT] main status=0
+
+[2026-03-23 08:37:56] [SESSION] pid=36230 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:37:56] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:37:56] [CMD] main "$@"
+[2026-03-23 08:37:56] [ARGS] argv=hub
+[2026-03-23 08:37:56] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-23 08:37:56] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-23 08:37:56] [EXIT] main status=0
+
+[2026-03-23 08:40:59] [SESSION] pid=43947 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:40:59] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:40:59] [CMD] main "$@"
+[2026-03-23 08:40:59] [ARGS] argv=rebuild
+[2026-03-23 08:42:24] [EXIT] main status=1
+
+[2026-03-23 08:44:11] [SESSION] pid=52516 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:44:11] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:44:11] [CMD] main "$@"
+[2026-03-23 08:44:11] [ARGS] argv=rebuild
+[2026-03-23 08:45:03] [EXIT] main status=130
+
+[2026-03-23 08:50:09] [SESSION] pid=76709 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:50:09] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:50:09] [CMD] main "$@"
+[2026-03-23 08:50:09] [ARGS] argv=purge
+[2026-03-23 08:50:09] [EXIT] main status=1
+
+[2026-03-23 08:50:16] [SESSION] pid=77163 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:50:16] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:50:16] [CMD] main "$@"
+[2026-03-23 08:50:16] [ARGS] argv=purge
+[2026-03-23 08:50:17] [EXIT] main status=1
+
+[2026-03-23 08:50:21] [SESSION] pid=77606 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:50:21] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:50:21] [CMD] main "$@"
+[2026-03-23 08:50:21] [ARGS] argv=purge all
+[2026-03-23 08:50:21] [EXIT] main status=1
+
+[2026-03-23 08:52:51] [SESSION] pid=90540 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:52:51] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:52:51] [CMD] main "$@"
+[2026-03-23 08:52:51] [ARGS] argv=rebuild
+[2026-03-23 08:53:15] [EXIT] main status=130
+
+[2026-03-23 08:53:20] [SESSION] pid=94077 user=root pwd=/home/tak_1/Nixorcist
+[2026-03-23 08:53:20] [CMD] trap 'status=$?; nixorcist_trace "EXIT" "main status=$status"' EXIT
+[2026-03-23 08:53:20] [CMD] main "$@"
+[2026-03-23 08:53:20] [ARGS] argv=hub
+[2026-03-23 08:53:20] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-23 08:53:20] [CMD] printf '\n  ✓ %s\n' "$msg"
+[2026-03-23 08:53:20] [EXIT] main status=0

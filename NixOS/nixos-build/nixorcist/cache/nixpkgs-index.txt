@@ -1,8 +1,0 @@
-eclipses|
-eclipses.eclipse-java|Eclipse Java IDE
-eclipses.eclipse-cpp|Eclipse C++ IDE
-swaync.package|Sway notification center package
-swaync.package.service|Sway notification center service
-waybar.modules|Waybar module owner
-waybar.modules.cpu|Waybar CPU module
-nano|Nano editor

@@ -1,137 +1,109 @@
-# Tak_OS
+# Tak_OS — Modular NixOS Configuration
+
+> **Repository:** [https://github.com/tak0dan/Tak_OS](https://github.com/tak0dan/Tak_OS)
+
+---
 
 ```
-         j        '-,                                                                                           
-          '-.        ',                                                                                         
-            |          \                                                                                       
-            '-,         \                                                                                     
-               j         .                                                                                  
-               |          .                                                                                
-     _....._   |       _. :                                                                               
-   .`       ''-L     .-   |                                                                               
- .`             '.  /  .` |                                                                                
-:                 'Y ,`  /.\   ███╗   ██╗██╗██╗  ██╗ ██████╗ ██████╗  ██████╗██╗███████╗████████╗     
-|                  / |  :  .\  ████╗  ██║██║╚██╗██╔╝██╔═══██╗██╔══██╗██╔════╝██║██╔════╝╚══██╔══╝    
-|                /`  : "    ./ ██╔██╗ ██║██║ ╚███╔╝ ██║   ██║██████╔╝██║     ██║███████╗   ██║      
-|      ..,___..-'     '.    /  ██║╚██╗██║██║ ██╔██╗ ██║   ██║██╔══██╗██║     ██║╚════██║   ██║      
-'     _....   ___      .`  /   ██║ ╚████║██║██╔╝ ██╗╚██████╔╝██║  ██║╚██████╗██║███████║   ██║       
-      | | | \_/ |\    /    '-. ╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝╚══════╝   ╚═╝       
-\     |'| ''    | '--`       |          The Declarative NixOS Package Sorcerer                          
- \    | .\      |            |                                                                          
-..:...`pd-Y     |..__.....-.-|                                                                           
-          |     \_.T.L.L_|_|_|                                                                           
-          |      \''-T.L_|_|_/                                                                           
-           \                |                                                                             
-            '-._             \                                                                           
-                '.._         :                                                                           
-                    ''--...__/                                                                           
-
+/etc/nixos/                       ← you are here (root)
+├── configuration.nix             ← system entry point
+├── hardware-configuration.nix    ← machine-specific hardware
+├── bluetooth.nix                 ← bluetooth service
+├── modules/                      ← system-level NixOS modules
+│   └── uwu/                      ← optional cosmetic sub-module
+├── packages/                     ← package groups by category
+├── nixorcist/                    ← declarative package manager
+│   └── generated/                ← auto-generated (do not edit)
+├── scripts/                      ← build & deployment helpers
+└── assets/                       ← wallpapers and media
 ```
 
-## Intention
+---
 
-Tak_OS is built to make NixOS feel comfortable and familiar for users coming from a classic Linux workflow:
+## What is Tak_OS
 
-- Keep configuration human-readable and file-centric.
-- Keep package operations interactive and understandable.
-- Keep system state declarative without forcing a flakes-first model.
+Tak_OS is a **modular, user-friendly NixOS configuration** built around a clean
+layered architecture. Instead of one monolithic `configuration.nix`, every
+system concern lives in its own focused module. The result is a configuration
+that stays readable and maintainable as it grows.
 
-The project intentionally centers around classic `/etc/nixos` style imports and generated module files, so users can reason about what changed by reading regular Nix files.
+**Layers (top to bottom):**
 
-## Core Workflow Philosophy (Classic over Flakes)
+1. `configuration.nix` — imports everything, sets high-level options
+2. `modules/` — hardware, services, desktop, shell, user accounts
+3. `packages/` — software groups installed per category
+4. `nixorcist/` — declarative package transaction engine
+5. `scripts/` — rebuild helpers and deployment utilities
 
-Tak_OS favors a **classic config workflow**:
+---
 
-- Primary control point is traditional `configuration.nix` imports.
-- Package selections are tracked via lock/query files and generated modules.
-- Rebuild behavior is designed around standard `nixos-rebuild` usage.
-- No requirement to maintain a `flake.nix` as the main project entrypoint.
+## Quick Start
 
-Compatibility with flake-enabled commands may exist in parts of the tooling, but the design goal is still a familiar, non-flake-first operational model.
-
-## Technical Decisions
-
-### 1) Generated Module Pipeline
-
-Instead of hand-editing every package entry repeatedly, Tak_OS generates structured module outputs from a controlled source of truth. This gives:
-
-- reproducible rebuilds,
-- lower risk of config drift,
-- simpler review of package changes.
-
-### 2) Indexed Package Discovery
-
-The package index is cached locally to speed up search and selection. The system tracks:
-
-- cache file presence,
-- last fetch date,
-- cache size/line health.
-
-This allows interactive refresh decisions instead of blind refetching every time.
-
-### 3) Transaction-Based Package Changes
-
-Install/remove actions are staged first, previewed, then applied. This reduces accidental changes and keeps operations explicit.
-
-### 4) Depth-Controlled Index Fetch
-
-Index refresh supports recursive fetch depth control (1–5), allowing faster lightweight fetches or deeper cataloging when needed.
-
-### 5) User-Controlled Long Operations
-
-During index fetch, the user can cancel with `q/Q` without killing the whole tool session.
-
-## Repository Layout
-
-- `NixOS/install.sh` — automated installation/bootstrap flow.
-- `NixOS/INSTALL.md` — detailed install and troubleshooting guide.
-- `NixOS/nixos-build/` — project-managed NixOS build/config assets.
-
-## Usage Guide
-
-### 1) Clone and prepare
+### First-time setup
 
 ```bash
-git clone <your-repo-url> Tak_OS
-cd Tak_OS
+# Clone the repo
+git clone https://github.com/tak0dan/Tak_OS.git /etc/nixos
+
+# Bootstrap nixorcist's generated hub
+sudo nixorcist gen
+sudo nixorcist hub
+
+# Rebuild
+sudo nixos-rebuild switch
 ```
 
-### 2) Install
-
-Use the project installer:
+### Everyday rebuild
 
 ```bash
-cd NixOS
-sudo bash install.sh
+# Smart rebuild with automatic error resolution
+sudo bash /etc/nixos/scripts/nix-rebuild-smart.sh
+
+# Or via the nixorcist all-in-one pipeline
+sudo nixorcist all
 ```
 
-For full manual steps and troubleshooting, follow `NixOS/INSTALL.md`.
+---
 
-### 3) Daily operation model
+## Directory Guide
 
-Typical flow with nixorcist-based tooling:
+| Path | Purpose |
+|------|---------|
+| [`modules/`](modules/README.md) | NixOS system modules (hardware, services, DE) |
+| [`packages/`](packages/README.md) | Package groups, one file per category |
+| [`nixorcist/`](nixorcist/README.md) | Package management TUI and transaction engine |
+| [`scripts/`](scripts/README.md) | Rebuild, comment/uncomment, and deploy helpers |
+| [`assets/`](assets/README.md) | Wallpapers and media used by the configuration |
 
-1. Open transaction mode and stage changes.
-2. Preview and confirm package changes.
-3. Generate modules/hub as needed.
-4. Rebuild system and verify.
+---
 
-### 4) Recommended operator habits
+## Code of Conduct
 
-- Use shallow index fetch when speed matters.
-- Use deeper fetch when searching broad package trees.
-- Review staged changes before apply/rebuild.
-- Keep generated files under version control for auditability.
+- **Never** edit files inside `nixorcist/generated/` by hand — they are managed by `nixorcist`.
+- Keep module boundaries clear. One concern per file.
+- Test changes with `nixos-rebuild dry-activate` before `switch`.
+- Run `sudo nixorcist all` when adding or removing packages instead of editing package lists manually.
+- Commit frequently; push to `main` on `https://github.com/tak0dan/Tak_OS`.
 
-## Possibilities / Roadmap Direction
+---
 
-Tak_OS can grow toward:
+## Upgrade Guide
 
-- profile-based hardware/workstation presets,
-- safer rollback helpers around rebuild boundaries,
-- richer diagnostics for package resolution failures,
-- optional flake wrappers (without replacing classic workflow).
+```bash
+# Update the nixpkgs channel
+sudo nix-channel --update
 
-## Project Goal in One Line
+# Refresh the nixorcist package index
+sudo nixorcist refresh-index
 
-**Make NixOS practical, familiar, and confidently maintainable—without abandoning the classic configuration style.**
+# Rebuild
+sudo nixos-rebuild switch
+```
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) if present, otherwise governed by the repository default.
+
+*Tak_OS — declarative, modular, yours.*
