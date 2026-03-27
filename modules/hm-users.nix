@@ -15,7 +15,7 @@
 #
 # Each profile:
 #   • Sets home.username / home.homeDirectory from the name alone.
-#   • Sets home.stateVersion via lib.mkDefault — safe to override in home.nix.
+#   • Sets home.stateVersion to match system.stateVersion — safe to override in home.nix.
 #   • Imports /home/<user>/.hm-local/home.nix    (preferred)
 #          or /home/<user>/.hm-local/default.nix  (fallback)
 #   • Falls back to a baseline (just git) when neither file exists.
@@ -25,7 +25,7 @@
 # The scaffold for ~/.hm-local/home.nix lives in modules/hm-home-scaffold.nix
 # and is written automatically by modules/hm-local-bootstrap.nix.
 
-{ pkgs, lib, features, ... }:
+{ config, pkgs, lib, features, ... }:
 {
   home-manager.users = lib.genAttrs features.home-manager-users (user:
     let
@@ -38,7 +38,7 @@
     {
       home.username                  = user;
       home.homeDirectory             = "/home/${user}";
-      home.stateVersion              = lib.mkDefault features.home-manager-state-version;
+      home.stateVersion              = lib.mkDefault config.system.stateVersion;
       home.enableNixpkgsReleaseCheck = false;
       imports                        = lib.optionals (hmFile != null) [ hmFile ];
       home.packages                  = [ pkgs.git ]; # baseline — always present
