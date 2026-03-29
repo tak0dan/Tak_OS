@@ -1,0 +1,42 @@
+/* Tak_OS · wlogout/catppuccin/style.css
+ * Theme: Catppuccin Mocha / Mauve
+ * Source: https://github.com/catppuccin/wlogout (MIT)
+ * Icons: catppuccin/wlogout icons/wlogout/mocha/mauve (MIT)
+ * Icon background-image rules added by Tak_OS for NixOS asset deployment.
+ */
+
+* {
+	background-image: none;
+	box-shadow: none;
+}
+
+window {
+	background-color: rgba(30, 30, 46, 0.90);
+}
+
+button {
+	border-radius: 0;
+	border-color: #cba6f7;
+	text-decoration-color: #cdd6f4;
+	color: #cdd6f4;
+	background-color: #181825;
+	border-style: solid;
+	border-width: 1px;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 25%;
+}
+
+button:focus, button:active, button:hover {
+	/* 20% Overlay 2, 80% mantle */
+	background-color: rgb(48, 50, 66);
+	outline-style: none;
+}
+
+/* ── Icons ─────────────────────────────────────────────────────────────── */
+#lock      { background-image: image(url("./icons/lock.svg")); }
+#logout    { background-image: image(url("./icons/logout.svg")); }
+#suspend   { background-image: image(url("./icons/suspend.svg")); }
+#hibernate { background-image: image(url("./icons/hibernate.svg")); }
+#shutdown  { background-image: image(url("./icons/shutdown.svg")); }
+#reboot    { background-image: image(url("./icons/reboot.svg")); }

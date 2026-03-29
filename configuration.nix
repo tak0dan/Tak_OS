@@ -26,11 +26,17 @@
 # │                                                                        │
 # │  Loaded when features.hyprland = true:                                 │
 # │    window-managers, portals, quickshell, fonts, theme, overlays, nh    │
+# │    hyprlock (screen lock + hypridle.conf generation)                   │
+# │    wlogout  (theme deployment → features.wlogout-profile)              │
 # │    vm-guest-services (*), local-hardware-clock (*)                     │
 # │    (*) imported but inactive until their own option is set             │
 # │                                                                        │
 # │  Loaded when features.uwu = true:                                      │
-# │    modules/uwu/nixowos.nix                                             │
+# │    modules/uwu/nixowos.nix        — NixOwOS logo + OS identity         │
+# │  Loaded when features.uwu = false:                                     │
+# │    modules/default-fastfetch.nix  — plain NixOS logo wrapper           │
+# │  Loaded when features.uwuPackages = true:                              │
+# │    packages/uwu.nix  → packages/catgirldownloader.nix (+ future pkgs) │
 # │                                                                        │
 # │  Loaded when features.virtualisation = true:                           │
 # │    modules/virtualbox.nix  (also enables Docker)                       │
@@ -63,6 +69,96 @@ let
     #   packages/hyprland.nix              — Hyprland-specific user packages
     #
     hyprland = true;
+
+    # ─── Hyprland sub-toggles ──────────────────────────────────────────────
+    # All sub-toggles below require hyprland = true to have any effect.
+    #
+    # 🔒 HYPRLOCK — GPU-accelerated screen locker
+    #   enable  — install hyprlock and configure it in hypridle
+    #   timeout — seconds of idle before the screen locks
+    #             (a warning notification fires 60 s before the lock)
+    #
+    hyprlock = { enable = true; timeout = 600; };
+
+    # 💤 HYPRIDLE — idle daemon that fires hyprlock on inactivity
+    #   Manages ~/.config/hypr/hypridle.conf for every user in home-manager-users.
+    #   Set to false to skip the idle daemon entirely (and leave the conf untouched).
+    #
+    hypridle = true;
+
+    # 📊 WAYBAR — Wayland status bar
+    waybar = true;
+
+    # 🔔 SWAYNC — Notification centre (swaync)
+    swaync = true;
+
+    # 🚪 WLOGOUT — Logout / power-off menu
+    wlogout = true;
+
+    # 🎨 WLOGOUT THEME — Visual theme for the wlogout screen
+    #
+    # Available profiles (assets live in /etc/nixos/assets/wlogout/<profile>/):
+    #   "default"     — Rounded icon buttons with wallust colour import
+    #                   (original ~/.config/wlogout theme, LinuxBeginnings)
+    #   "catppuccin"  — Catppuccin Mocha / Mauve  (https://github.com/catppuccin/wlogout)
+    #   "minimal"     — Minimal dark style, system wlogout icons
+    #                   (https://github.com/shivalingeshwar6/wlogout-minimal)
+    #   "end4"        — Material Symbols font icons, translucent dark
+    #                   (https://github.com/end-4/dots-hyprland)
+    #
+    wlogout-profile = "catppuccin";
+
+    # 🔍 ROFI — Application launcher (Wayland mode)
+    rofi = true;
+
+    # =========================================================================
+    # 🎮 GAMEON — GLF-OS-inspired gaming stack
+    # =========================================================================
+    # Master toggle: set enable = true to activate everything below.
+    # Set enable = false to revert ALL changes (module is not imported at all).
+    #
+    # Sub-toggles (only active when enable = true):
+    #
+    #   wine              Wine WoW64 Staging + winetricks
+    #   proton-ge         proton-ge-bin as Steam extra compat tool
+    #   launchers         Lutris / Heroic / Faugus / UMU / Oversteer
+    #   overlays          MangoHud / GOverlay / vkBasalt + compat symlinks
+    #   streaming         Full GStreamer codec pack + noisetorch
+    #   peripherals       xone / xpadneo / hid-tmff2; ratbagd; piper;
+    #                       opentabletdriver; steam-hardware; DualSense udev
+    #   openrgb           OpenRGB service (all-plugins build)
+    #   input-remapper    input-remapper daemon + polkit + autoload unit
+    #   fanatec-wheel     hid-fanatecff kernel module  (local src, OFF by default)
+    #   logitech-wheel    new-lg4ff kernel module       (local src, OFF by default)
+    #   sysctl-tweaks     Gaming sysctl / Mesa shader-cache env vars
+    #   zram              zram-swap (zstd, 25 % RAM, priority 5)
+    #   bfq-scheduler     BFQ I/O scheduler udev rule on all block devices
+    #   low-latency-audio PipeWire 256-sample fixed quantum + usbcore.autosuspend=-1
+    #
+    # Sources for out-of-tree kernel modules (cloned locally — no fetchFromGitHub):
+    #   /etc/nixos/assets/kernel-modules/hid-fanatecff/
+    #   /etc/nixos/assets/kernel-modules/new-lg4ff/
+    # =========================================================================
+    gameon = {
+      enable            = false;   # ← set to true to activate the entire stack
+
+      wine              = true;
+      proton-ge         = true;
+      launchers         = true;
+      overlays          = true;
+      streaming         = true;   # heavy GStreamer pack — disabled by default
+
+      peripherals       = true;
+      openrgb           = true;
+      input-remapper    = true;
+      fanatec-wheel     = true;   # build from local source — off by default
+      logitech-wheel    = true;   # build from local source — off by default
+
+      sysctl-tweaks     = true;
+      zram              = true;
+      bfq-scheduler     = true;
+      low-latency-audio = true;
+    };
 
     # =========================================================================
     # 🖥️  KERNEL PARAMS PROFILE
@@ -131,6 +227,15 @@ let
     # All credits to yunfachi. Original dots: https://github.com/yunfachi/NixOwOS
     #
     uwu = true; #<--- I know you want to enable it, you femboy.
+    uwuPackages = false;
+    #~~~~~~~~~~~~~~~~~~
+    #                 |
+    #                 ∨
+    # Sub-toggle: UwU packages (requires uwu = true to be meaningful)
+    # Installs catgirldownloader and other UwU-specific packages.
+    # → packages/uwu.nix  (standalone derivations in packages/catgirldownloader.nix)
+    #
+
 
     # =========================================================================
     # 📦 VIRTUALISATION
@@ -321,17 +426,31 @@ in
      # Tooling
      ./modules/nh.nix                # `nh` Nix helper + nix-output-monitor + nvd
 
+     # Screen lock + hypridle.conf generation
+     ./modules/hyprlock.nix          # hyprlock package + generates ~/.config/hypr/hypridle.conf
+
+     # Wlogout theme deployment
+     ./modules/wlogout.nix           # deploys features.wlogout-profile theme to ~/.config/wlogout/
+
      # Optional hardware support (inactive until their enable option is set)
      ./modules/vm-guest-services.nix    # QEMU guest agent + SPICE
      ./modules/local-hardware-clock.nix # RTC in local time (dual-boot Windows)
    ]
 
    ++ lib.optionals features.uwu [
-     ./modules/uwu/nixowos.nix
+     ./modules/uwu/nixowos.nix        # NixOwOS logo + OS identity
+   ]
+
+   ++ lib.optionals (!features.uwu) [
+     ./modules/default-fastfetch.nix  # Plain NixOS logo
    ]
 
    ++ lib.optionals features.virtualisation [
      ./modules/virtualbox.nix  # VirtualBox host + Docker
+   ]
+
+   ++ lib.optionals features.gameon.enable [
+     ./modules/gameon.nix      # GLF-OS-inspired gaming stack (all sub-features inside)
    ];
 
 

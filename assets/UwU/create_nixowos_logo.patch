@@ -1,0 +1,53 @@
+# Patch sourced from overlays/fastfetch/ in the NixOwOS repo by yunfachi.
+# Original: https://github.com/yunfachi/NixOwOS
+# License:  MIT (see assets/LICENSE in that repo)
+diff --git a/src/logo/ascii/nixowos.txt b/src/logo/ascii/nixowos.txt
+new file mode 100644
+index 00000000..e169f578
+--- /dev/null
++++ b/src/logo/ascii/nixowos.txt
+@@ -0,0 +1,20 @@
++$1           ▗▄▄▄       $2▗▄▄▄▄    ▄▄▄▖
++$1           ▜███▙       $2▜███▙  ▟███▛
++$1            ▜███▙       $2▜███▙▟███▛       $1▗
++$1     ▐▄      ▜███▙       $2▜██████▛    $1▄▄▞▀▛
++$1      ▜▀▀▀▄▄  ▜█████████▙ $2▜████▛  $1▄█▛▀  ▗▘
++$1       ▌   ▀█▄▟██████████▙ $2▜███▙$1▟█▛    ▗▞
++$1       ▐  ▙▖▟$2▙▄▄▖           $2▜████$1▙▄▟▘  ▟▘
++$1        ▜▖▝█$2███▛             $2▜██▛$1██▄▄▄▞▘
++$1         ▝$2▟███▛ $4▀▚▄       ▄▞▀ $2▜▛ $1▟███▛
++$2 ▟███████████▛ $4▗▄▄▞▘     ▝▚▄▄▖  $1▟██████████▙
++$2 ▜██████████▛  $3/// $4▟▘ ▄ ▝▙ $3/// $1▟███████████▛
++$2       ▟███▛ $1▟▙    $4▜▄▟▀▙▄▛    $1▟███▛
++$2      ▟███▛ $1▟██▙             $1▟███▛      $5▄
++$2     ▟███▛  $1▜███▙           $1▝▀▀▀▀  $5▗▄▛▀▀
++$2     ▜██▛  ▗▌$1▜███▙ $2▜██████████████████▛
++$2      ▜▛  ▗▛ $1▟████▙ $2▜████████████████▛
++$2          ▝▌$1▟██████▙     $5▄▄$2▜███▙
++$1           ▟███▛▜███▙$2▄▄▟$5▀▘  $2▜███▙
++$1          ▟███▛$2▄▄$1▜███▙       $2▜███▙
++$1          ▝▀▀▀    ▀▀▀▀▘       $2▀▀▀▘
+diff --git a/src/logo/builtin.c b/src/logo/builtin.c
+index 35eabdb6..b8df3e09 100644
+--- a/src/logo/builtin.c
++++ b/src/logo/builtin.c
+@@ -3287,6 +3287,19 @@ static const FFlogo N[] = {
+             FF_COLOR_FG_CYAN,
+         },
+     },
++    // NixOwOS
++    {
++        .names = {"NixOwOS"},
++        .lines = FASTFETCH_DATATEXT_LOGO_NIXOWOS,
++        .colors = {
++            "34",
++            "94",
++            "31",
++            "33",
++            "35",
++        },
++
++    },
+     // NetBSD
+     {
+         .names = {"NetBSD"},

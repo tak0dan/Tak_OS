@@ -7,7 +7,7 @@ with pkgs; [
   # =========================
   # Hyprland Extras
   # =========================
-  hypridle
+  # hypridle — toggled by features.hypridle  (see modules/system-packages.nix)
   hyprpolkitagent
   uwsm
   hyprlang
@@ -40,7 +40,7 @@ with pkgs; [
   google-chrome
   gnome-system-monitor
   gsettings-qt
-  fastfetch
+  # fastfetch — provided by modules/default-fastfetch.nix or modules/uwu/nixowos.nix
   grimblast
   gtk-engine-murrine
   inxi

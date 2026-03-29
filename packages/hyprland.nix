@@ -26,24 +26,24 @@ with pkgs; [
   ags        # Aylur's GTK Shell — JavaScript-powered widget system
   eww        # Elkowar's widget system (Wayland + X11)
   quickshell # QtQuick / QML-based shell and widget toolkit
-  waybar     # Highly customizable Wayland status bar
+  # waybar — toggled by features.waybar  (see modules/system-packages.nix)
 
   # =========================
   # Launchers
   # =========================
-  rofi   # Application launcher (Wayland mode)
+  # rofi — toggled by features.rofi     (see modules/system-packages.nix)
   wofi   # GTK Wayland application launcher
 
   # =========================
   # Lock & Logout
   # =========================
-  hyprlock   # Hyprland GPU-based screen locker
-  wlogout    # Wayland logout / power menu
+  # hyprlock — toggled by features.hyprlock.enable  (see modules/hyprlock.nix)
+  # wlogout  — toggled by features.wlogout          (see modules/system-packages.nix)
 
   # =========================
   # Notifications
   # =========================
-  swaynotificationcenter   # Notification center for Sway / Hyprland (swaync)
+  # swaynotificationcenter — toggled by features.swaync  (see modules/system-packages.nix)
 
   # =========================
   # Wallpaper

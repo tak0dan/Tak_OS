@@ -62,6 +62,34 @@
         ++ lib.optionals features.steam
           (filter (import ../packages/games.nix { inherit pkgs; }))
 
+        ++ lib.optionals features.uwuPackages
+          (filter (import ../packages/uwu.nix { inherit pkgs; }))
+
+        # ── Hyprland sub-feature packages ────────────────────────────────────
+        # Extracted from hyprland.nix / nixos-hyprland.nix so that each
+        # can be toggled independently via features.<name> in configuration.nix.
+        ++ lib.optionals (features.hyprland && features.hyprlock.enable)
+          (filter [ pkgs.hyprlock ])
+
+        ++ lib.optionals (features.hyprland && features.hypridle)
+          (filter [ pkgs.hypridle ])
+
+        ++ lib.optionals (features.hyprland && features.waybar)
+          (filter [ pkgs.waybar ])
+
+        ++ lib.optionals (features.hyprland && features.swaync)
+          (filter [ pkgs.swaynotificationcenter ])
+
+        ++ lib.optionals (features.hyprland && features.wlogout)
+          (filter [ pkgs.wlogout ])
+
+        ++ lib.optionals (features.hyprland && features.rofi)
+          (filter [ pkgs.rofi ])
+
+        # ── GameOn packages ─────────────────────────────────────────────────
+        ++ lib.optionals features.gameon.enable
+          (import ../packages/gameon.nix { inherit pkgs features; })
+
         # Always-installed system utilities
         ++ [
           pkgs.kdePackages.polkit-kde-agent-1
