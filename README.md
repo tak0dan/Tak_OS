@@ -13,7 +13,25 @@
 > **Repository:** [https://github.com/tak0dan/Tak_OS](https://github.com/tak0dan/Tak_OS)  
 > **License:** GNU GPLv3
 
+
 ---
+
+
+## One-Line Install
+
+Run this on a fresh NixOS machine to clone the repo and launch the automated installer:
+
+```bash
+git clone --depth 1 https://github.com/tak0dan/Tak_OS.git /tmp/Tak_OS && sudo bash /tmp/Tak_OS/scripts/install.sh
+```
+
+The installer detects your username, hostname, and NixOS version automatically — no manual file editing required.
+The repo is cloned to `/tmp/Tak_OS` as a staging area; the script then deploys it to `/etc/nixos`.
+
+> **Tip:** Review [`scripts/install.sh`](scripts/install.sh) before running it with `sudo` so you know exactly what will happen on your machine.
+
+---
+
 
 ## Table of Contents
 
@@ -246,21 +264,6 @@ its package list via `modules/system-packages.nix`. A package appearing in
 either list is excluded from all groups everywhere in the system.
 
 See [`packages/README.md`](packages/README.md) for the full picture.
-
----
-
-## One-Line Install
-
-Run this on a fresh NixOS machine to clone the repo and launch the automated installer:
-
-```bash
-git clone --depth 1 https://github.com/tak0dan/Tak_OS.git /tmp/Tak_OS && sudo bash /tmp/Tak_OS/scripts/install.sh
-```
-
-The installer detects your username, hostname, and NixOS version automatically — no manual file editing required.
-The repo is cloned to `/tmp/Tak_OS` as a staging area; the script then deploys it to `/etc/nixos`.
-
-> **Tip:** Review [`scripts/install.sh`](scripts/install.sh) before running it with `sudo` so you know exactly what will happen on your machine.
 
 ---
 
