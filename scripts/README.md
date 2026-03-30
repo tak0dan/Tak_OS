@@ -9,6 +9,7 @@
 
 ```
 scripts/
+├── install.sh                       ← fresh-install bootstrap (run this first)
 ├── nix-rebuild-smart.sh             ← interactive rebuild with error resolver
 ├── nixos-rebuild                    ← thin wrapper around nixos-rebuild
 ├── nixos-rebuild-error-listener.sh  ← background listener for rebuild errors
@@ -24,6 +25,46 @@ scripts/
 These scripts extend and simplify the standard NixOS rebuild workflow.
 They are plain Bash tools run by the user — they are not part of Nix
 evaluation and have no effect on the system configuration itself.
+
+---
+
+### `install.sh`
+
+**Run this once on a fresh NixOS machine** after cloning the repo.
+No manual file editing required — everything is detected automatically.
+
+**Auto-detected values (no prompts):**
+
+| Value | Source |
+|-------|--------|
+| Username | `$SUDO_USER` → `logname` → parsed from `/etc/nixos/configuration.nix` |
+| Hostname | `hostname -s` |
+| Target NixOS version | `system.stateVersion` in the repo's `configuration.nix` |
+
+**Two-phase install:**
+
+*Phase 1 — Channel upgrade*
+1. Adds `nixos-<version>` and `home-manager` channels — fixes the missing
+   channel error and ensures packages like `thunar` and `ghostty` are available.
+2. Rebuilds your **existing** NixOS config on the new channel (safe baseline
+   before Tak_OS is applied).
+
+*Phase 2 — Tak_OS deployment*
+3. Patches `modules/users.nix`, `modules/networking.nix`, and
+   `configuration.nix` with your real username and hostname.
+4. Defaults `kernelParams` to `"generic"` (safe for any hardware; change it
+   later once you know your GPU/CPU profile).
+5. Deploys the full config to `/etc/nixos/` via `rsync`, preserving
+   `hardware-configuration.nix` and the nixorcist cache.
+6. Runs `nixos-rebuild switch` into Tak_OS.
+
+```bash
+sudo bash /path/to/Tak_OS/scripts/install.sh
+```
+
+> **Note:** After the rebuild your home-manager scaffold is written to
+> `/home/<user>/.hm-local/home.nix` automatically. Edit it freely — it will
+> never be overwritten unless it is empty or has a syntax error.
 
 ---
 
