@@ -23,6 +23,7 @@ let
   kde     = import ./kde.nix             { inherit pkgs; };
   games   = import ./games.nix           { inherit pkgs; };
   wm      = import ./window-managers.nix { inherit pkgs; };
+  tui      = import ./tui.nix { inherit pkgs; };
   simplex = import ./simplex-chat.nix    { inherit pkgs; };
   mess = import ./pkg-dump.nix           { inherit pkgs; };
 
@@ -35,6 +36,7 @@ in
 
 builtins.concatLists [
   core
+  tui
   dev
   comms
   browsers

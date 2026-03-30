@@ -68,22 +68,22 @@
         # ── Hyprland sub-feature packages ────────────────────────────────────
         # Extracted from hyprland.nix / nixos-hyprland.nix so that each
         # can be toggled independently via features.<name> in configuration.nix.
-        ++ lib.optionals (features.hyprland && features.hyprlock.enable)
+        ++ lib.optionals (features.hyprland && features.hypr.lock.enable)
           (filter [ pkgs.hyprlock ])
 
-        ++ lib.optionals (features.hyprland && features.hypridle)
+        ++ lib.optionals (features.hyprland && features.hypr.idle)
           (filter [ pkgs.hypridle ])
 
-        ++ lib.optionals (features.hyprland && features.waybar)
+        ++ lib.optionals (features.hyprland && features.hypr.bar)
           (filter [ pkgs.waybar ])
 
-        ++ lib.optionals (features.hyprland && features.swaync)
+        ++ lib.optionals (features.hyprland && features.hypr.notif)
           (filter [ pkgs.swaynotificationcenter ])
 
-        ++ lib.optionals (features.hyprland && features.wlogout)
+        ++ lib.optionals (features.hyprland && features.hypr.logout)
           (filter [ pkgs.wlogout ])
 
-        ++ lib.optionals (features.hyprland && features.rofi)
+        ++ lib.optionals (features.hyprland && features.hypr.launcher)
           (filter [ pkgs.rofi ])
 
         # ── GameOn packages ─────────────────────────────────────────────────

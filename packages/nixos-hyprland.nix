@@ -7,7 +7,7 @@ with pkgs; [
   # =========================
   # Hyprland Extras
   # =========================
-  # hypridle — toggled by features.hypridle  (see modules/system-packages.nix)
+  # hypridle — toggled by features.hypr.idle  (see modules/system-packages.nix)
   hyprpolkitagent
   uwsm
   hyprlang

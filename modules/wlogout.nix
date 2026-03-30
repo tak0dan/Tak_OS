@@ -6,7 +6,7 @@
 #
 # Loaded exclusively when features.hyprland = true (see configuration.nix).
 #
-# Deploys the wlogout theme selected by features.wlogout-profile to
+# Deploys the wlogout theme selected by features.hypr.logoutTheme to
 # ~/.config/wlogout/ for every user in features.home-manager-users.
 # The deployment runs on every rebuild, keeping the config in sync with the
 # chosen profile.
@@ -17,16 +17,16 @@
 #   "minimal"     — Minimal dark style using NixOS system wlogout icons
 #   "end4"        — Material Symbols Outlined font icons (end-4/dots-hyprland)
 #
-# Wlogout package installation is gated by features.wlogout in
+# Wlogout package installation is gated by features.hypr.logout in
 # modules/system-packages.nix; this module handles only the config files.
 #
 # =============================================================================
 { lib, pkgs, features, ... }:
 
-lib.mkIf (features.hyprland && features.wlogout)
+lib.mkIf (features.hyprland && features.hypr.logout)
 (
   let
-    profile = features."wlogout-profile";
+    profile = features.hypr.logoutTheme;
 
     # Import the theme directory into the Nix store at evaluation time.
     # builtins.path copies the directory to the store without a builder,
@@ -41,7 +41,7 @@ lib.mkIf (features.hyprland && features.wlogout)
     assertions = [{
       assertion = builtins.elem profile [ "default" "catppuccin" "minimal" "end4" ];
       message   = ''
-        features.wlogout-profile must be one of:
+        features.hypr.logoutTheme must be one of:
           "default"  "catppuccin"  "minimal"  "end4"
         Got: "${profile}"
       '';

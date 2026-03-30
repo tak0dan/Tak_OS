@@ -26,7 +26,7 @@ with pkgs; [
   ags        # Aylur's GTK Shell — JavaScript-powered widget system
   eww        # Elkowar's widget system (Wayland + X11)
   quickshell # QtQuick / QML-based shell and widget toolkit
-  # waybar — toggled by features.waybar  (see modules/system-packages.nix)
+  # waybar — toggled by features.hypr.bar  (see modules/system-packages.nix)
 
   # =========================
   # Launchers
@@ -37,13 +37,13 @@ with pkgs; [
   # =========================
   # Lock & Logout
   # =========================
-  # hyprlock — toggled by features.hyprlock.enable  (see modules/hyprlock.nix)
+  # hyprlock — toggled by features.hypr.lock.enable  (see modules/hyprlock.nix)
   # wlogout  — toggled by features.wlogout          (see modules/system-packages.nix)
 
   # =========================
   # Notifications
   # =========================
-  # swaynotificationcenter — toggled by features.swaync  (see modules/system-packages.nix)
+  # swaynotificationcenter — toggled by features.hypr.notif  (see modules/system-packages.nix)
 
   # =========================
   # Wallpaper

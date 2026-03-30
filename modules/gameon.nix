@@ -120,22 +120,22 @@ lib.mkIf gameon.enable {
 
   # ── Kernel modules (peripherals) ───────────────────────────────────────────
   boot.extraModulePackages =
-    lib.optionals (gameon.peripherals) (with config.boot.kernelPackages; [
+    lib.optionals (gameon.hardware.controllers) (with config.boot.kernelPackages; [
       hid-tmff2   # Thrustmaster T300/T500/TS-XW force-feedback
       xone        # Xbox One / Series wireless dongle driver
       xpadneo     # Xbox controller Bluetooth advanced driver
     ])
-    ++ lib.optionals gameon.fanatec-wheel  [ fanatecModule ]
-    ++ lib.optionals gameon.logitech-wheel [ lg4ffModule   ];
+    ++ lib.optionals gameon.hardware.wheels.fanatec  [ fanatecModule ]
+    ++ lib.optionals gameon.hardware.wheels.logitech [ lg4ffModule   ];
 
   boot.kernelModules =
-    lib.optionals gameon.fanatec-wheel  [ "hid-fanatec"      ]
-    ++ lib.optionals gameon.logitech-wheel [ "hid-logitech-new" ];
+    lib.optionals gameon.hardware.wheels.fanatec  [ "hid-fanatec"      ]
+    ++ lib.optionals gameon.hardware.wheels.logitech [ "hid-logitech-new" ];
 
   # ── Fanatec udev + users.groups.games ──────────────────────────────────────
-  services.udev.packages = lib.optionals gameon.fanatec-wheel [ fanatecModule ];
+  services.udev.packages = lib.optionals gameon.hardware.wheels.fanatec [ fanatecModule ];
 
-  users.groups.games = lib.mkIf gameon.fanatec-wheel {
+  users.groups.games = lib.mkIf gameon.hardware.wheels.fanatec {
     members = builtins.filter
       (u: config.users.users.${u}.isNormalUser)
       (builtins.attrNames config.users.users);
@@ -152,31 +152,31 @@ lib.mkIf gameon.enable {
       ATTRS{name}=="Wireless Controller Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
       ATTRS{name}=="DualSense Wireless Controller Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
     '']
-    ++ lib.optionals gameon.logitech-wheel [''
+    ++ lib.optionals gameon.hardware.wheels.logitech [''
       ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c261", \
         RUN+="${pkgs.usb-modeswitch}/bin/usb_modeswitch -v 046d -p c261 -m 01 -r 01 -C 03 -M '0f00010142'"
     '']
-    ++ lib.optionals gameon.bfq-scheduler [''
+    ++ lib.optionals gameon.system.ioScheduler [''
       ACTION=="add|change", SUBSYSTEM=="block", ATTR{queue/scheduler}="bfq"
     '']
   );
 
   # ── Hardware services ───────────────────────────────────────────────────────
-  hardware.steam-hardware.enable   = lib.mkIf gameon.peripherals true;
-  hardware.opentabletdriver.enable = lib.mkIf gameon.peripherals true;
-  services.ratbagd.enable          = lib.mkIf gameon.peripherals true;
+  hardware.steam-hardware.enable   = lib.mkIf gameon.hardware.controllers true;
+  hardware.opentabletdriver.enable = lib.mkIf gameon.hardware.controllers true;
+  services.ratbagd.enable          = lib.mkIf gameon.hardware.controllers true;
 
-  services.hardware.openrgb = lib.mkIf gameon.openrgb {
+  services.hardware.openrgb = lib.mkIf gameon.hardware.rgb {
     enable = true;
     package = pkgs.openrgb-with-all-plugins;
   };
 
   # ── OpenRGB package (for the service) ──────────────────────────────────────
   environment.systemPackages =
-    lib.optionals gameon.openrgb [ pkgs.openrgb-with-all-plugins ];
+    lib.optionals gameon.hardware.rgb [ pkgs.openrgb-with-all-plugins ];
 
   # ── Input-remapper ──────────────────────────────────────────────────────────
-  services.input-remapper = lib.mkIf gameon.input-remapper {
+  services.input-remapper = lib.mkIf gameon.hardware.remap {
     enable  = true;
     package = pkgs.input-remapper.overrideAttrs (old: {
       postInstall = (old.postInstall or "") + ''
@@ -186,7 +186,7 @@ lib.mkIf gameon.enable {
   };
 
   # Allow users group to run input-remapper without a password prompt
-  security.polkit.extraConfig = lib.mkIf gameon.input-remapper ''
+  security.polkit.extraConfig = lib.mkIf gameon.hardware.remap ''
     polkit.addRule(function(action, subject) {
       if (action.id == "inputremapper" && subject.isInGroup("users")) {
         return polkit.Result.YES;
@@ -200,7 +200,7 @@ lib.mkIf gameon.enable {
   '';
 
   # Autoload input-remapper profiles after graphical login
-  systemd.user.services.input-remapper-autoload = lib.mkIf gameon.input-remapper {
+  systemd.user.services.input-remapper-autoload = lib.mkIf gameon.hardware.remap {
     description = "Autoload Input Remapper profiles";
     wantedBy    = [ "graphical-session.target" ];
     after       = [ "graphical-session.target" ];
@@ -214,8 +214,8 @@ lib.mkIf gameon.enable {
 
   # ── Steam extras (proton-ge, session env, fire-and-forget compat paths) ────
   programs.steam = lib.mkIf features.steam {
-    extraCompatPackages = lib.optionals gameon.proton-ge [ pkgs.proton-ge-bin ];
-    package = lib.mkIf gameon.proton-ge (pkgs.steam.override {
+    extraCompatPackages = lib.optionals gameon.compat.protonGE [ pkgs.proton-ge-bin ];
+    package = lib.mkIf gameon.compat.protonGE (pkgs.steam.override {
       extraEnv = {
         TZ                           = ":/etc/localtime";
         STEAM_EXTRA_COMPAT_TOOLS_PATHS = "\${HOME}/.steam/root/compatibilitytools.d";
@@ -225,7 +225,7 @@ lib.mkIf gameon.enable {
 
   # ── vkBasalt GOverlay compatibility symlinks ────────────────────────────────
   # GOverlay hard-codes /usr/share and /usr/lib — neither exists on NixOS.
-  system.activationScripts.gameon-vkbasalt-compat = lib.mkIf gameon.overlays {
+  system.activationScripts.gameon-vkbasalt-compat = lib.mkIf gameon.graphics.overlays {
     deps = [];
     text = ''
       mkdir -p /usr/share/vulkan/implicit_layer.d
@@ -239,7 +239,7 @@ lib.mkIf gameon.enable {
   };
 
   # ── Gaming-optimised sysctl ─────────────────────────────────────────────────
-  boot.kernel.sysctl = lib.mkIf gameon.sysctl-tweaks {
+  boot.kernel.sysctl = lib.mkIf gameon.system.sysctl {
     "vm.swappiness"                 = 10;
     "vm.vfs_cache_pressure"         = 50;
     "vm.dirty_bytes"                = 268435456;   # 256 MiB
@@ -253,7 +253,7 @@ lib.mkIf gameon.enable {
   };
 
   # ── zram swap ───────────────────────────────────────────────────────────────
-  zramSwap = lib.mkIf gameon.zram {
+  zramSwap = lib.mkIf gameon.system.zram {
     enable        = true;
     algorithm     = "zstd";
     memoryPercent = 25;
@@ -261,13 +261,13 @@ lib.mkIf gameon.enable {
   };
 
   # ── Mesa shader cache size ──────────────────────────────────────────────────
-  environment.variables = lib.mkIf gameon.sysctl-tweaks {
+  environment.variables = lib.mkIf gameon.system.sysctl {
     MESA_SHADER_CACHE_MAX_SIZE = "12G";
   };
 
   # ── PipeWire low-latency clock ──────────────────────────────────────────────
   services.pipewire.extraConfig.pipewire."92-gameon-low-latency" =
-    lib.mkIf gameon.low-latency-audio {
+    lib.mkIf gameon.system.audio {
       "context.properties" = {
         "default.clock.rate"        = 48000;
         "default.clock.quantum"     = 256;
@@ -277,7 +277,7 @@ lib.mkIf gameon.enable {
     };
 
   # ── usbcore autosuspend off (audio/input stability) ─────────────────────────
-  boot.kernelParams = lib.optionals gameon.low-latency-audio [
+  boot.kernelParams = lib.optionals gameon.system.audio [
     "usbcore.autosuspend=-1"
   ];
 
