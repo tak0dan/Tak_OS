@@ -61,14 +61,34 @@ install_git() {
 
     warn "Git not found"
 
-    if command -v nix-env >/dev/null 2>&1; then
-        info "Installing Git via Nix..."
-        run sudo nix-env -iA nixpkgs.git || die "Git install failed"
-    else
-        die "Git required but no supported package manager found"
+    # ── Nix (modern, flake-compatible)
+    if command -v nix >/dev/null 2>&1; then
+        info "Installing Git via nix profile..."
+
+        run nix profile install nixpkgs#git \
+            || warn "nix profile install failed"
+
+        if command -v git >/dev/null 2>&1; then
+            ok "Git installed via nix profile"
+            return
+        fi
     fi
 
-    ok "Git installed"
+    # ── Legacy nix-env fallback
+    if command -v nix-env >/dev/null 2>&1; then
+        info "Trying legacy nix-env..."
+
+        run nix-env -iA nixpkgs.git \
+            || warn "nix-env install failed"
+
+        if command -v git >/dev/null 2>&1; then
+            ok "Git installed via nix-env"
+            return
+        fi
+    fi
+
+    # ── Absolute fallback: bail out
+    die "Git installation failed. Install it manually (nix profile install nixpkgs#git)"
 }
 
 prompt_wallpapers() {
