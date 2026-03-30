@@ -126,11 +126,21 @@ info "Patching project files…"
 
 #   modules/users.nix
 #     · users.users.tak_1  →  users.users.<user>
+#     · users.groups.tak_1 →  users.groups.<user>
+#     · group = "tak_1"    →  group = "<user>"
 #     · description        →  username (clear the personal placeholder)
 sed -i \
     -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
+    -e "s/users\.groups\.tak_1/users.groups.${INSTALL_USER}/g" \
+    -e "s/group = \"tak_1\"/group = \"${INSTALL_USER}\"/" \
     -e "s/description = \"Elder Evil\"/description = \"${INSTALL_USER}\"/" \
     "${PROJECT_DIR}/modules/users.nix"
+
+#   modules/virtualbox.nix
+#     · users.users.tak_1  →  users.users.<user>
+sed -i \
+    -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
+    "${PROJECT_DIR}/modules/virtualbox.nix"
 
 #   modules/networking.nix
 #     · hostname placeholder  →  real hostname
