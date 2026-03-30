@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tak_OS · bootstrap.sh — Nix-Smart Bootstrap
+# Tak_OS · bootstrap.sh — Fully Hardened Bootstrap
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 
 set -Eeuo pipefail
@@ -25,6 +25,14 @@ die()  { log "${RED}[✗]${RESET} $*" >&2; exit 1; }
 
 trap 'die "Error on line $LINENO"' ERR
 
+# ── Interrupt cleanup ────────────────────────────────────────────────────────
+cleanup_on_interrupt() {
+    warn "Interrupted — cleaning up incomplete repository"
+    rm -rf "$DEST"
+    exit 1
+}
+trap cleanup_on_interrupt INT TERM
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
 run() {
     if [[ "$DRY_RUN" == "1" ]]; then
@@ -44,6 +52,17 @@ check_network() {
     ok "Network OK"
 }
 
+# ── Repo validation ─────────────────────────────────────────────────────────
+is_repo_valid() {
+    [[ -d "$DEST/.git" ]] || return 1
+
+    git -C "$DEST" rev-parse HEAD >/dev/null 2>&1 || return 1
+
+    [[ -f "$DEST/scripts/install.sh" ]] || return 1
+
+    return 0
+}
+
 # ── Wallpaper prompt ────────────────────────────────────────────────────────
 prompt_wallpapers() {
     if [[ "$INCLUDE_WALLPAPERS" == "ask" ]]; then
@@ -56,36 +75,19 @@ prompt_wallpapers() {
     fi
 }
 
-# ── Clone logic (Git or Nix fallback) ────────────────────────────────────────
-clone_repo_native() {
-    info "Cloning repository (partial, sparse)..."
-
-    run git clone \
-        --filter=blob:none \
-        --sparse \
-        --branch "$BRANCH" \
-        "$REPO_URL" "$DEST"
-
-    cd "$DEST" || die "cd failed"
-
-    run git sparse-checkout init --cone
+# ── Clone using system Git ──────────────────────────────────────────────────
+clone_native() {
+    info "Cloning repository..."
+    run git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
 
     if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
-        info "Excluding wallpapers..."
-
-        run git sparse-checkout set \
-            '/*' \
-            '!assets/Wallpapers'
-
-    else
-        info "Including all files..."
-        run git sparse-checkout set '/*'
+        info "Removing wallpapers..."
+        run rm -rf "$DEST/assets/Wallpapers"
     fi
-
-    ok "Sparse checkout configured"
 }
 
-clone_repo_nix() {
+# ── Clone using Nix Git ─────────────────────────────────────────────────────
+clone_with_nix() {
     warn "Git not found — using temporary Git via Nix"
 
     local script
@@ -96,15 +98,11 @@ set -euo pipefail
 
 echo "[*] Running inside nix shell with Git"
 
+git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
+
 if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
-    echo "[*] Cloning without wallpapers..."
-    git clone --filter=blob:none --sparse --branch "$BRANCH" "$REPO_URL" "$DEST"
-    cd "$DEST"
-    git sparse-checkout set --cone
-    git sparse-checkout set . ':(exclude)assets/Wallpapers'
-else
-    echo "[*] Cloning full repository..."
-    git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
+    echo "[*] Removing wallpapers..."
+    rm -rf "$DEST/assets/Wallpapers"
 fi
 EOF
 
@@ -114,43 +112,24 @@ EOF
 
     rm -f "$script"
 }
+
+# ── Clone controller ────────────────────────────────────────────────────────
 clone_repo() {
-    # ── Check existing directory ─────────────────────────────
     if [[ -d "$DEST" ]]; then
-        warn "Directory exists: $DEST"
-
-        # Check if it's a valid git repo
-        if [[ -d "$DEST/.git" ]]; then
-            info "Existing Git repository detected — validating..."
-
-            if git -C "$DEST" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-                info "Repository looks valid"
-
-                # Check critical file
-                if [[ -f "$DEST/scripts/install.sh" ]]; then
-                    ok "Existing repo is complete — skipping clone"
-                    return
-                else
-                    warn "Repo incomplete (missing installer) — recloning"
-                fi
-            else
-                warn "Broken git repo — recloning"
-            fi
+        if is_repo_valid && [[ "$FORCE_RECLONE" != "1" ]]; then
+            warn "Valid repository exists — skipping clone"
+            return
         else
-            warn "Not a git repo — recloning"
+            warn "Existing repo invalid or incomplete — cleaning up"
+            run rm -rf "$DEST"
         fi
-
-        # ── Remove broken repo ────────────────────────────────
-        warn "Removing existing directory..."
-        run rm -rf "$DEST"
     fi
 
-    # ── Perform clone ─────────────────────────────────────────
     if command -v git >/dev/null 2>&1; then
-        clone_repo_native
+        clone_native
     else
         require_cmd nix
-        clone_repo_nix
+        clone_with_nix
     fi
 
     ok "Repository cloned"
@@ -176,7 +155,7 @@ cat << 'EOF'
     ██║   ██╔══██║██╔═██╗       ██║   ██║╚════██║
     ██║   ██║  ██║██║  ██╗      ╚██████╔╝███████║
     ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝
-         Bootstrap — Nix Smart Edition
+         Bootstrap — Hardened Edition
 EOF
 printf "${RESET}\n"
 
