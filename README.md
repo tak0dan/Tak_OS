@@ -15,9 +15,23 @@
 
 ---
 
+## Install
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/tak0dan/Tak_OS/main/scripts/bootstrap.sh)
+```
+
+The bootstrap script will:
+- Skip cloning if `~/Tak_OS` already exists
+- Ask whether to include wallpapers (~200 MB) and clone with or without `assets/Wallpapers`
+- Run `scripts/install.sh` to apply the configuration
+
+---
+
 ## Table of Contents
 
 - [What is Tak\_OS](#what-is-tak_os)
+- [Install](#install)
 - [Directory Structure](#directory-structure)
 - [Configuration Architecture](#configuration-architecture)
   - [The Three Layers](#the-three-layers)
