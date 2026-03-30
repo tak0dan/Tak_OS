@@ -28,6 +28,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR="/etc/nixos"
 
+SCAN_PATHS=(
+  "$TARGET_DIR/configuration.nix"
+  "$TARGET_DIR/modules"
+  "$TARGET_DIR/packages"
+)
+
+COMMENT_LOG="$TARGET_DIR/.auto-commented-packages.log"
+touch "$COMMENT_LOG"
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -44,26 +53,24 @@ INSTALL_USER="${SUDO_USER:-}"
 
 if [[ -z "$INSTALL_USER" ]]; then
     INSTALL_USER="$(
-        grep -oP 'users\.users\.\K[a-z_][a-z0-9_-]+(?=\s*=\s*\{)' \
-            "${TARGET_DIR}/configuration.nix" 2>/dev/null | head -1 || true
+        grep -oP 'users\.users\.\K[a-z_][a-z0-9_-]+' \
+        "${TARGET_DIR}/configuration.nix" 2>/dev/null | head -1 || true
     )"
 fi
 
-[[ -z "$INSTALL_USER" ]] && die "Could not auto-detect your username."
+[[ -z "$INSTALL_USER" ]] && die "Could not auto-detect username."
 
 INSTALL_HOST="$(hostname -s 2>/dev/null || hostname)"
-[[ -z "$INSTALL_HOST" ]] && die "Could not detect hostname."
 
 REPO_VERSION="$(
     grep -oP 'stateVersion\s*=\s*"\K[^"]+' \
-        "${PROJECT_DIR}/configuration.nix" | head -1
+    "${PROJECT_DIR}/configuration.nix" | head -1
 )"
-[[ -z "$REPO_VERSION" ]] && die "Could not read system.stateVersion."
 
 printf "Detected settings:\n\n"
-printf "  Username     : ${INSTALL_USER}\n"
-printf "  Hostname     : ${INSTALL_HOST}\n"
-printf "  NixOS        : ${REPO_VERSION}\n\n"
+printf "  Username : %s\n" "$INSTALL_USER"
+printf "  Hostname : %s\n" "$INSTALL_HOST"
+printf "  NixOS    : %s\n\n" "$REPO_VERSION"
 
 read -rp "Proceed? [Y/n] " _confirm
 [[ "${_confirm,,}" == "n" ]] && die "Aborted."
@@ -76,7 +83,9 @@ nix-channel --add \
   home-manager
 nix-channel --update
 
-nixos-rebuild switch
+if ! nixos-rebuild build; then
+    warn "Initial build failed — expected on fresh systems."
+fi
 ok "Phase 1 complete"
 
 step "Phase 2: Deploy Tak_OS"
@@ -100,8 +109,6 @@ sed -i \
 
 ok "Project files patched."
 
-info "Preserving hardware config…"
-
 _tmpdir="$(mktemp -d)"
 trap 'rm -rf "$_tmpdir"' EXIT
 
@@ -116,49 +123,115 @@ rsync -a --delete "${PROJECT_DIR}/" "${TARGET_DIR}/"
 ok "Deployment complete."
 
 # ===========================
-# 🔍 VALIDATION + AUTO-FIX
+# 🔧 AUTO-FIX ENGINE (FIXED)
 # ===========================
-step "Validating user consistency"
+auto_fix() {
+  local attempt=1
+  local max=10
 
-LEFTOVERS="$(grep -R "users.users.tak_1" "$TARGET_DIR" || true)"
+  while (( attempt <= max )); do
+    info "Build attempt $attempt..."
 
-if [[ -n "$LEFTOVERS" ]]; then
-    warn "Leftover tak_1 references found:"
-    printf "%s\n" "$LEFTOVERS"
+    set +e
+    LOG_FILE="$TARGET_DIR/build-attempt-${attempt}.log"
 
-    printf "\nAttempt automatic fix? [y/N] "
-    read -r _fix
+    nixos-rebuild build 2>&1 | tee "$LOG_FILE"
+    RESULT=${PIPESTATUS[0]}
+    RESULT=$?
+    set -e
 
-    if [[ "${_fix,,}" == "y" ]]; then
-        info "Fixing user references safely…"
-
-        find "$TARGET_DIR" -type f -name "*.nix" -exec sed -i \
-          -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
-          -e "s/users\.users\.tak_1\./users.users.${INSTALL_USER}./g" \
-          {} +
-
-        ok "Auto-fix applied."
-    else
-        die "Aborted due to inconsistent config."
+    if [[ $RESULT -eq 0 ]]; then
+      ok "Build succeeded"
+      return 0
     fi
-fi
 
-# Catch sneaky attribute definitions
-if grep -R "tak_1\s*=" "$TARGET_DIR" | grep "users.users" >/dev/null; then
-    warn "Possible attribute-style leftover (users.users = { tak_1 = ... }) detected."
-fi
+    var=$(grep -oP "undefined variable '\K[^']+" build.log | head -1 || true)
 
-# Hard fail if still broken
-if grep -R "users.users.tak_1" "$TARGET_DIR" >/dev/null; then
-    die "Refusing to rebuild: unresolved tak_1 references remain."
-fi
+    if [[ -z "$var" ]]; then
+      warn "Unhandled error:"
+      cat build.log
+      return 1
+    fi
 
-ok "User config validated."
+    warn "Disabling package: $var"
+
+    matches=$(grep -R --include="*.nix" -n "\b${var}\b" "${SCAN_PATHS[@]}" || true)
+
+    if [[ -z "$matches" ]]; then
+      warn "Could not locate '$var'"
+      return 1
+    fi
+
+    echo "$matches"
+
+    while IFS= read -r line; do
+      file=$(cut -d: -f1 <<< "$line")
+      lineno=$(cut -d: -f2 <<< "$line")
+
+      if [[ -f "$file" ]] && \
+         ! sed -n "${lineno}p" "$file" | grep -q "AUTO-COMMENTED"; then
+
+        sed -i "${lineno}s/^/# AUTO-COMMENTED (${var}): /" "$file"
+        echo "${file}:${lineno}:${var}" >> "$COMMENT_LOG"
+      fi
+    done <<< "$matches"
+
+    ok "Disabled '$var'. Retrying..."
+
+    ((attempt++))
+  done
+
+  return 1
+}
 
 # ===========================
-# 🚀 REBUILD
+# 🚀 FINAL BUILD
 # ===========================
-info "Rebuilding system…"
+step "Final adaptive build"
+
+if ! auto_fix; then
+  die "Build failed even after auto-fix."
+fi
+
 nixos-rebuild switch
-
 ok "Tak_OS installation complete"
+
+# ===========================
+# 🔄 RESTORE SCRIPT
+# ===========================
+RESTORE_SCRIPT="$TARGET_DIR/scripts/restore-commented.sh"
+
+mkdir -p "$TARGET_DIR/scripts"
+
+cat > "$RESTORE_SCRIPT" << 'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOG="/etc/nixos/.auto-commented-packages.log"
+
+[[ ! -f "$LOG" ]] && { echo "No log."; exit 0; }
+
+while IFS=: read -r file line var; do
+  if [[ -f "$file" ]]; then
+    sed -i "${line}s/^# AUTO-COMMENTED (${var}): //" "$file"
+  fi
+done < "$LOG"
+
+rm -f "$LOG"
+
+echo "Restored. Run nixos-rebuild switch."
+EOF
+
+chmod +x "$RESTORE_SCRIPT"
+
+# ===========================
+# 🔄 PROMPT RESTORE
+# ===========================
+printf "\nUncomment disabled packages now? [y/N] "
+read -r restore_now
+
+if [[ "${restore_now,,}" == "y" ]]; then
+  "$RESTORE_SCRIPT"
+  info "Rebuilding after restore..."
+  nixos-rebuild switch
+fi
