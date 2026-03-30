@@ -114,18 +114,38 @@ EOF
 
     rm -f "$script"
 }
-
 clone_repo() {
-    if [[ -d "$DEST" && "$FORCE_RECLONE" != "1" ]]; then
-        warn "Directory exists — skipping clone"
-        return
-    fi
+    # ── Check existing directory ─────────────────────────────
+    if [[ -d "$DEST" ]]; then
+        warn "Directory exists: $DEST"
 
-    if [[ "$FORCE_RECLONE" == "1" && -d "$DEST" ]]; then
-        warn "Force reclone enabled — removing existing directory"
+        # Check if it's a valid git repo
+        if [[ -d "$DEST/.git" ]]; then
+            info "Existing Git repository detected — validating..."
+
+            if git -C "$DEST" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+                info "Repository looks valid"
+
+                # Check critical file
+                if [[ -f "$DEST/scripts/install.sh" ]]; then
+                    ok "Existing repo is complete — skipping clone"
+                    return
+                else
+                    warn "Repo incomplete (missing installer) — recloning"
+                fi
+            else
+                warn "Broken git repo — recloning"
+            fi
+        else
+            warn "Not a git repo — recloning"
+        fi
+
+        # ── Remove broken repo ────────────────────────────────
+        warn "Removing existing directory..."
         run rm -rf "$DEST"
     fi
 
+    # ── Perform clone ─────────────────────────────────────────
     if command -v git >/dev/null 2>&1; then
         clone_repo_native
     else
