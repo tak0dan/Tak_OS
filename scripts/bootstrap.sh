@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Tak_OS · bootstrap.sh — Fully Hardened Bootstrap
-# github.com/tak0dan/Tak_OS · GNU GPLv3
+# Tak_OS · bootstrap.sh — Fully Hardened Bootstrap (Upgraded)
 
 set -Eeuo pipefail
 
@@ -12,6 +11,7 @@ BRANCH="${BRANCH:-main}"
 INCLUDE_WALLPAPERS="ask"   # ask | yes | no
 FORCE_RECLONE="${FORCE_RECLONE:-0}"
 DRY_RUN="${DRY_RUN:-0}"
+DEBUG="${DEBUG:-0}"
 
 # ── Colours ─────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -23,12 +23,16 @@ ok()   { log "${GREEN}[✓]${RESET} $*"; }
 warn() { log "${YELLOW}[!]${RESET} $*"; }
 die()  { log "${RED}[✗]${RESET} $*" >&2; exit 1; }
 
+debug() {
+    [[ "$DEBUG" == "1" ]] && log "[DEBUG] $*"
+}
+
 trap 'die "Error on line $LINENO"' ERR
 
 # ── Interrupt cleanup ────────────────────────────────────────────────────────
 cleanup_on_interrupt() {
     warn "Interrupted — cleaning up incomplete repository"
-    rm -rf "$DEST"
+    [[ -d "$DEST/.git" ]] && rm -rf "$DEST"
     exit 1
 }
 trap cleanup_on_interrupt INT TERM
@@ -52,15 +56,44 @@ check_network() {
     ok "Network OK"
 }
 
+# ── Git wrapper (Nix fallback) ──────────────────────────────────────────────
+git_run() {
+    if command -v git >/dev/null 2>&1; then
+        run git "$@"
+    else
+        run nix --extra-experimental-features "nix-command flakes" \
+            shell nixpkgs#git -c git "$@"
+    fi
+}
+
 # ── Repo validation ─────────────────────────────────────────────────────────
 is_repo_valid() {
     [[ -d "$DEST/.git" ]] || return 1
 
-    git -C "$DEST" rev-parse HEAD >/dev/null 2>&1 || return 1
+    git_run -C "$DEST" rev-parse HEAD >/dev/null 2>&1 || return 1
 
     [[ -f "$DEST/scripts/install.sh" ]] || return 1
 
     return 0
+}
+
+# ── Retry logic ─────────────────────────────────────────────────────────────
+clone_with_retry() {
+    local attempts=3
+    local delay=2
+
+    for ((i=1; i<=attempts; i++)); do
+        info "Clone attempt $i/$attempts..."
+
+        if "$@"; then
+            return 0
+        fi
+
+        warn "Clone failed (attempt $i)"
+        sleep "$delay"
+    done
+
+    die "Failed to clone repository after $attempts attempts"
 }
 
 # ── Wallpaper prompt ────────────────────────────────────────────────────────
@@ -78,7 +111,8 @@ prompt_wallpapers() {
 # ── Clone using system Git ──────────────────────────────────────────────────
 clone_native() {
     info "Cloning repository..."
-    run git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
+
+    clone_with_retry git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
 
     if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
         info "Removing wallpapers..."
@@ -90,27 +124,15 @@ clone_native() {
 clone_with_nix() {
     warn "Git not found — using temporary Git via Nix"
 
-    local script
-    script=$(mktemp)
-
-    cat > "$script" <<EOF
-set -euo pipefail
-
-echo "[*] Running inside nix shell with Git"
-
-git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
-
-if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
-    echo "[*] Removing wallpapers..."
-    rm -rf "$DEST/assets/Wallpapers"
-fi
-EOF
-
-    run nix \
+    clone_with_retry nix \
         --extra-experimental-features "nix-command flakes" \
-        shell nixpkgs#git -c bash "$script"
+        shell nixpkgs#git -c \
+        git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
 
-    rm -f "$script"
+    if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
+        info "Removing wallpapers..."
+        run rm -rf "$DEST/assets/Wallpapers"
+    fi
 }
 
 # ── Clone controller ────────────────────────────────────────────────────────
@@ -132,18 +154,27 @@ clone_repo() {
         clone_with_nix
     fi
 
+    is_repo_valid || die "Repository clone succeeded but is invalid"
+
     ok "Repository cloned"
+}
+
+# ── Installer preflight ─────────────────────────────────────────────────────
+preflight_check() {
+    INSTALL_SCRIPT="${DEST}/scripts/install.sh"
+
+    [[ -f "$INSTALL_SCRIPT" ]] \
+        || die "Installer missing after clone"
+
+    [[ -x "$INSTALL_SCRIPT" ]] || chmod +x "$INSTALL_SCRIPT"
 }
 
 # ── Installer ───────────────────────────────────────────────────────────────
 run_installer() {
-    INSTALL_SCRIPT="${DEST}/scripts/install.sh"
-
-    [[ -f "$INSTALL_SCRIPT" ]] \
-        || die "Installer not found: $INSTALL_SCRIPT"
+    preflight_check
 
     info "Launching installer..."
-    run sudo "$INSTALL_SCRIPT"
+    run sudo "$DEST/scripts/install.sh"
 }
 
 # ── Banner ──────────────────────────────────────────────────────────────────
