@@ -4,8 +4,11 @@
 { config, pkgs, ... }:
 
 {
+  users.groups.tak_1 = {};
+
   users.users.tak_1 = {
     isNormalUser = true;
+    group = "tak_1";
     shell = pkgs.zsh;
     description = "Elder Evil";
     extraGroups = [ "networkmanager" "wheel" ];
