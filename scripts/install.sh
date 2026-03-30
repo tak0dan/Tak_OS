@@ -28,7 +28,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR="/etc/nixos"
 
-# ── Colour helpers ───────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -38,166 +37,128 @@ warn()  { printf "${YELLOW}[!]${RESET} %s\n" "$*"; }
 die()   { printf "${RED}[✗]${RESET} %s\n"   "$*" >&2; exit 1; }
 step()  { printf "\n${BOLD}${CYAN}──── %s ────${RESET}\n" "$*"; }
 
-# ── Root check ───────────────────────────────────────────────────────────────
-[[ "${EUID}" -ne 0 ]] && die "Run as root:  sudo $0"
+[[ "${EUID}" -ne 0 ]] && die "Run as root: sudo $0"
 
-# ── Banner ───────────────────────────────────────────────────────────────────
-printf "\n${BOLD}${CYAN}"
-cat << 'EOF'
- ████████╗ █████╗ ██╗  ██╗       ██████╗ ███████╗
-    ██╔══╝██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
-    ██║   ███████║█████╔╝       ██║   ██║███████╗
-    ██║   ██╔══██║██╔═██╗       ██║   ██║╚════██║
-    ██║   ██║  ██║██║  ██╗      ╚██████╔╝███████║
-    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝
-         Fresh Install Bootstrap
-EOF
-printf "${RESET}\n"
-
-# ── Auto-detect: username ────────────────────────────────────────────────────
-# Priority: SUDO_USER (set when running via sudo) → logname → parse existing config
 INSTALL_USER="${SUDO_USER:-}"
+[[ -z "$INSTALL_USER" ]] && INSTALL_USER="$(logname 2>/dev/null || true)"
 
 if [[ -z "$INSTALL_USER" ]]; then
-    INSTALL_USER="$(logname 2>/dev/null || true)"
-fi
-
-if [[ -z "$INSTALL_USER" ]]; then
-    # Last resort: pull the first isNormalUser entry from the live NixOS config.
     INSTALL_USER="$(
         grep -oP 'users\.users\.\K[a-z_][a-z0-9_-]+(?=\s*=\s*\{)' \
             "${TARGET_DIR}/configuration.nix" 2>/dev/null | head -1 || true
     )"
 fi
 
-[[ -z "$INSTALL_USER" ]] && die \
-    "Could not auto-detect your username. Run the script with sudo rather than as root directly."
+[[ -z "$INSTALL_USER" ]] && die "Could not auto-detect your username."
 
-# ── Auto-detect: hostname ────────────────────────────────────────────────────
 INSTALL_HOST="$(hostname -s 2>/dev/null || hostname)"
 [[ -z "$INSTALL_HOST" ]] && die "Could not detect hostname."
 
-# ── Auto-detect: target NixOS version from repo ─────────────────────────────
 REPO_VERSION="$(
     grep -oP 'stateVersion\s*=\s*"\K[^"]+' \
         "${PROJECT_DIR}/configuration.nix" | head -1
 )"
-[[ -z "$REPO_VERSION" ]] && die \
-    "Could not read system.stateVersion from ${PROJECT_DIR}/configuration.nix."
+[[ -z "$REPO_VERSION" ]] && die "Could not read system.stateVersion."
 
-# ── Summary and confirmation ─────────────────────────────────────────────────
 printf "Detected settings:\n\n"
-printf "  ${BOLD}Username${RESET}        : ${CYAN}${INSTALL_USER}${RESET}\n"
-printf "  ${BOLD}Hostname${RESET}        : ${CYAN}${INSTALL_HOST}${RESET}\n"
-printf "  ${BOLD}Target NixOS${RESET}    : ${CYAN}${REPO_VERSION}${RESET}\n"
-printf "  ${BOLD}Kernel params${RESET}   : ${CYAN}generic${RESET} (safe default — change in configuration.nix later)\n"
-printf "\n"
-read -rp "$(printf "${BOLD}Proceed with installation?${RESET} [Y/n] ")" _confirm
+printf "  Username     : ${INSTALL_USER}\n"
+printf "  Hostname     : ${INSTALL_HOST}\n"
+printf "  NixOS        : ${REPO_VERSION}\n\n"
+
+read -rp "Proceed? [Y/n] " _confirm
 [[ "${_confirm,,}" == "n" ]] && die "Aborted."
 
-# ============================================================================
-# PHASE 1 — Channel upgrade + first rebuild (keeps your existing config)
-# ============================================================================
 step "Phase 1: Channel upgrade"
 
-info "Adding nixos-${REPO_VERSION} channel…"
 nix-channel --add "https://nixos.org/channels/nixos-${REPO_VERSION}" nixos
-
-info "Adding home-manager channel (release-${REPO_VERSION})…"
 nix-channel --add \
-    "https://github.com/nix-community/home-manager/archive/release-${REPO_VERSION}.tar.gz" \
-    home-manager
-
-info "Updating channels…"
+  "https://github.com/nix-community/home-manager/archive/release-${REPO_VERSION}.tar.gz" \
+  home-manager
 nix-channel --update
-ok "Channels set to NixOS ${REPO_VERSION} + home-manager ${REPO_VERSION}."
 
-info "Rebuilding your current config on NixOS ${REPO_VERSION} (safe baseline)…"
 nixos-rebuild switch
-ok "Phase 1 complete — system is running NixOS ${REPO_VERSION}."
+ok "Phase 1 complete"
 
-# ============================================================================
-# PHASE 2 — Patch project files, deploy Tak_OS, rebuild
-# ============================================================================
 step "Phase 2: Deploy Tak_OS"
 
-# ── 2a. Patch project files ──────────────────────────────────────────────────
 info "Patching project files…"
 
-#   modules/users.nix
-#     · users.users.tak_1  →  users.users.<user>
-#     · description        →  username (clear the personal placeholder)
 sed -i \
-    -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
-    -e "s/description = \"Elder Evil\"/description = \"${INSTALL_USER}\"/" \
-    "${PROJECT_DIR}/modules/users.nix"
+  -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
+  -e "s/description = \"Elder Evil\"/description = \"${INSTALL_USER}\"/" \
+  "${PROJECT_DIR}/modules/users.nix"
 
-#   modules/networking.nix
-#     · hostname placeholder  →  real hostname
-#     · polkit user literals  →  real username (code + comments)
 sed -i \
-    -e "s/networking\.hostName = \"Tak0_NixOS\"/networking.hostName = \"${INSTALL_HOST}\"/" \
-    -e "s/subject\.user == \"tak_1\"/subject.user == \"${INSTALL_USER}\"/" \
-    -e "s/# Polkit allows tak_1/# Polkit allows ${INSTALL_USER}/" \
-    -e "s/# Allow tak_1 to manage/# Allow ${INSTALL_USER} to manage/" \
-    "${PROJECT_DIR}/modules/networking.nix"
+  -e "s/networking\.hostName = \"Tak0_NixOS\"/networking.hostName = \"${INSTALL_HOST}\"/" \
+  -e "s/subject\.user == \"tak_1\"/subject.user == \"${INSTALL_USER}\"/" \
+  "${PROJECT_DIR}/modules/networking.nix"
 
-#   configuration.nix
-#     · home-manager-users "tak_1"  →  real username
-#     · kernelParams "thinkpad"     →  "generic" (safe for any hardware)
 sed -i \
-    -e "s/\"tak_1\"/\"${INSTALL_USER}\"/" \
-    -e 's/kernelParams = "thinkpad"/kernelParams = "generic"/' \
-    "${PROJECT_DIR}/configuration.nix"
+  -e "s/\"tak_1\"/\"${INSTALL_USER}\"/g" \
+  -e 's/kernelParams = "thinkpad"/kernelParams = "generic"/' \
+  "${PROJECT_DIR}/configuration.nix"
 
 ok "Project files patched."
 
-# ── 2b. Preserve machine-specific files before rsync ────────────────────────
-info "Preserving hardware-configuration.nix and nixorcist cache…"
+info "Preserving hardware config…"
 
-_tmpdir="$(mktemp -d /tmp/takos-install.XXXXXX)"
+_tmpdir="$(mktemp -d)"
 trap 'rm -rf "$_tmpdir"' EXIT
 
-HW_CONF="${TARGET_DIR}/hardware-configuration.nix"
-[[ -f "$HW_CONF" ]] && cp "$HW_CONF" "${_tmpdir}/hardware-configuration.nix"
+[[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && \
+  cp "${TARGET_DIR}/hardware-configuration.nix" "$_tmpdir/"
 
-NIXORCIST_CACHE="${TARGET_DIR}/nixorcist/cache"
-NIXORCIST_GEN="${TARGET_DIR}/nixorcist/generated"
-[[ -d "$NIXORCIST_CACHE" ]] && cp -a "$NIXORCIST_CACHE" "${_tmpdir}/nixorcist-cache"
-[[ -d "$NIXORCIST_GEN"   ]] && cp -a "$NIXORCIST_GEN"   "${_tmpdir}/nixorcist-generated"
-
-# ── 2c. Deploy project to /etc/nixos ────────────────────────────────────────
-info "Deploying Tak_OS to ${TARGET_DIR}…"
 rsync -a --delete "${PROJECT_DIR}/" "${TARGET_DIR}/"
 
-# Restore preserved files
-[[ -f "${_tmpdir}/hardware-configuration.nix" ]] && \
-    cp "${_tmpdir}/hardware-configuration.nix" "$HW_CONF"
+[[ -f "$_tmpdir/hardware-configuration.nix" ]] && \
+  cp "$_tmpdir/hardware-configuration.nix" "${TARGET_DIR}/"
 
-if [[ -d "${_tmpdir}/nixorcist-cache" ]]; then
-    mkdir -p "${TARGET_DIR}/nixorcist/cache"
-    cp -a "${_tmpdir}/nixorcist-cache/." "${TARGET_DIR}/nixorcist/cache/"
+ok "Deployment complete."
+
+# ===========================
+# 🔍 VALIDATION + AUTO-FIX
+# ===========================
+step "Validating user consistency"
+
+LEFTOVERS="$(grep -R "users.users.tak_1" "$TARGET_DIR" || true)"
+
+if [[ -n "$LEFTOVERS" ]]; then
+    warn "Leftover tak_1 references found:"
+    printf "%s\n" "$LEFTOVERS"
+
+    printf "\nAttempt automatic fix? [y/N] "
+    read -r _fix
+
+    if [[ "${_fix,,}" == "y" ]]; then
+        info "Fixing user references safely…"
+
+        find "$TARGET_DIR" -type f -name "*.nix" -exec sed -i \
+          -e "s/users\.users\.tak_1/users.users.${INSTALL_USER}/g" \
+          -e "s/users\.users\.tak_1\./users.users.${INSTALL_USER}./g" \
+          {} +
+
+        ok "Auto-fix applied."
+    else
+        die "Aborted due to inconsistent config."
+    fi
 fi
-if [[ -d "${_tmpdir}/nixorcist-generated" ]]; then
-    mkdir -p "${TARGET_DIR}/nixorcist/generated"
-    cp -a "${_tmpdir}/nixorcist-generated/." "${TARGET_DIR}/nixorcist/generated/"
+
+# Catch sneaky attribute definitions
+if grep -R "tak_1\s*=" "$TARGET_DIR" | grep "users.users" >/dev/null; then
+    warn "Possible attribute-style leftover (users.users = { tak_1 = ... }) detected."
 fi
 
-ok "Tak_OS deployed to ${TARGET_DIR}."
+# Hard fail if still broken
+if grep -R "users.users.tak_1" "$TARGET_DIR" >/dev/null; then
+    die "Refusing to rebuild: unresolved tak_1 references remain."
+fi
 
-# ── 2d. Final rebuild into Tak_OS ───────────────────────────────────────────
-info "Rebuilding into Tak_OS…"
+ok "User config validated."
+
+# ===========================
+# 🚀 REBUILD
+# ===========================
+info "Rebuilding system…"
 nixos-rebuild switch
-ok "Phase 2 complete — Tak_OS is active."
 
-# ── Done ─────────────────────────────────────────────────────────────────────
-printf "\n${BOLD}${GREEN}Installation complete!${RESET}\n\n"
-printf "  ${BOLD}Hostname${RESET}  : ${CYAN}${INSTALL_HOST}${RESET}\n"
-printf "  ${BOLD}User${RESET}      : ${CYAN}${INSTALL_USER}${RESET}\n"
-printf "\n"
-printf "Your home-manager scaffold will be written to:\n"
-printf "  ${BOLD}/home/${INSTALL_USER}/.hm-local/home.nix${RESET}\n"
-printf "Edit it freely — it won't be overwritten unless it is empty or broken.\n"
-printf "\n"
-printf "${YELLOW}Tip:${RESET} Open ${BOLD}configuration.nix${RESET} and set your GPU driver and kernel profile\n"
-printf "when you know your hardware (currently set to safe generic defaults).\n\n"
+ok "Tak_OS installation complete"
