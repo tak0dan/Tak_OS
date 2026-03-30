@@ -58,21 +58,31 @@ prompt_wallpapers() {
 
 # ── Clone logic (Git or Nix fallback) ────────────────────────────────────────
 clone_repo_native() {
+    info "Cloning repository (partial, sparse)..."
+
+    run git clone \
+        --filter=blob:none \
+        --sparse \
+        --branch "$BRANCH" \
+        "$REPO_URL" "$DEST"
+
+    cd "$DEST" || die "cd failed"
+
+    run git sparse-checkout init --cone
+
     if [[ "$INCLUDE_WALLPAPERS" == "no" ]]; then
-        info "Cloning without wallpapers..."
+        info "Excluding wallpapers..."
 
-        run git clone --filter=blob:none --sparse \
-            --branch "$BRANCH" "$REPO_URL" "$DEST"
-
-        cd "$DEST" || die "cd failed"
-
-        run git sparse-checkout set --cone
-        run git sparse-checkout set . ':(exclude)assets/Wallpapers'
+        run git sparse-checkout set \
+            '/*' \
+            '!assets/Wallpapers'
 
     else
-        info "Cloning full repository..."
-        run git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
+        info "Including all files..."
+        run git sparse-checkout set '/*'
     fi
+
+    ok "Sparse checkout configured"
 }
 
 clone_repo_nix() {
