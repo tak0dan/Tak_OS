@@ -54,7 +54,7 @@ with pkgs; [
   libsForQt5.qtstyleplugin-kvantum
   libsForQt5.qt5ct
   (mpv.override { scripts = [ mpvScripts.mpris ]; })
-  nvtopPackages.full
+  #nvtopPackages.full
   openssl
   pciutils
   networkmanagerapplet
