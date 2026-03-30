@@ -275,7 +275,7 @@ let
       #
       idle = true;
 
-      bar      = true;   # 📊 Waybar  — Wayland status bar
+      bar      = false;   # 📊 Waybar  — Wayland status bar
       notif    = true;   # 🔔 SwayNC  — Notification centre
       logout   = true;   # 🚪 Wlogout — Logout / power-off menu
       launcher = true;   # 🔍 Rofi    — Application launcher (Wayland mode)
@@ -313,7 +313,7 @@ let
     # =========================================================================
 
     # ╔══════════════════════════════════════════════════════════════╗
-    # ║ 🎮 GAMEON — GLF-OS-inspired gaming stack                   ║
+    # ║ 🎮 GAMEON — GLF-OS-inspired gaming stack                    ║
     # ╚══════════════════════════════════════════════════════════════╝
     # Master toggle: set enable = true to activate everything below.
     # Set enable = false to skip the module entirely — zero system changes.
@@ -387,7 +387,7 @@ let
     # ⚠️  VirtualBox kernel module takes significant time to build.
     #     Disable on first rebuild if you don't need it immediately.
     #
-    virtualisation = false;
+    virtualisation = true;
 
     # =========================================================================
     # 🤖 NIXORCIST   (Work in progress)
@@ -397,7 +397,7 @@ let
     # → nixorcist/generated/all-packages.nix
     # → modules/system-packages.nix  (nixorcist CLI wrapper)
     #
-    nixorcist = true;
+    nixorcist = false;
 
     # =========================================================================
     # 🏠 HOME-MANAGER

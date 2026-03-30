@@ -6,6 +6,7 @@ with pkgs; [
 
     nnn
     ranger
+    mycli
 
 
 ]
