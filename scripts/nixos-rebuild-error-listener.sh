@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Tak_OS · nixos-rebuild-error-listener.sh — error hook for rebuild failures
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 # =============================================================================
 #  nixos-rebuild-error-listener.sh
 #

@@ -1,9 +1,5 @@
-# ==================================================
-#  Tak_OS (2026)
-#  Project URL: https://github.com/tak0dan/Tak_OS
-#  License: GNU GPLv3
-#  SPDX-License-Identifier: GPL-3.0-or-later
-# ==================================================
+# Tak_OS · kernel-params-generic.nix — Safe generic kernel parameters (no GPU-specific flags)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, lib, ... }:
 
 with lib;

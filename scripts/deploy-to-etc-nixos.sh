@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Tak_OS · deploy-to-etc-nixos.sh — rsync PROJECT_DIR to /etc/nixos/
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 set -euo pipefail
 
 # Deploy nixos-build into /etc/nixos with rotating home backup.

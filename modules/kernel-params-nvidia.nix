@@ -1,9 +1,5 @@
-# ==================================================
-#  Tak_OS (2026)
-#  Project URL: https://github.com/tak0dan/Tak_OS
-#  License: GNU GPLv3
-#  SPDX-License-Identifier: GPL-3.0-or-later
-# ==================================================
+# Tak_OS · kernel-params-nvidia.nix — Kernel parameters for Nvidia DRM modesetting
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # Nvidia kernel-level parameters only.
 # All hardware.nvidia.* configuration lives in nvidia-drivers.nix.

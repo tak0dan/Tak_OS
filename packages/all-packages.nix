@@ -28,7 +28,8 @@ let
   mess = import ./pkg-dump.nix           { inherit pkgs; };
 
   weather = [ (pkgs.callPackage ./waybar-weather.nix {}) ];
-  nixhl   = import ./nixos-hyprland.nix  { inherit pkgs; };
+  # nixhl (nixos-hyprland.nix) is now loaded in system-packages.nix
+  # under lib.optionals features.hyprland, so GPU-conditional nvtop works.
 
   # eclipse = import ./eclipse.nix { inherit pkgs; }; # Not finished yet
 
@@ -48,5 +49,4 @@ builtins.concatLists [
   simplex
   weather
   mess
-  nixhl
 ]

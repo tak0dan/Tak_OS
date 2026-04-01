@@ -54,7 +54,7 @@ with pkgs; [
   libsForQt5.qtstyleplugin-kvantum
   libsForQt5.qt5ct
   (mpv.override { scripts = [ mpvScripts.mpris ]; })
-  #nvtopPackages.full
+  # nvtop — loaded in system-packages.nix, GPU-variant selected by features.gpu
   openssl
   pciutils
   networkmanagerapplet

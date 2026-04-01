@@ -1,9 +1,5 @@
-# ==================================================
-#  Tak_OS (2026)
-#  Project URL: https://github.com/tak0dan/Tak_OS
-#  License: GNU GPLv3
-#  SPDX-License-Identifier: GPL-3.0-or-later
-# ==================================================
+# Tak_OS · nvidia-drivers.nix — Nvidia GPU driver stack (proprietary)
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 {
   lib,
   pkgs,
@@ -21,8 +17,7 @@ in {
     services.xserver.videoDrivers = ["nvidia"];
 
     hardware.graphics = {
-      enable = true;
-      enable32Bit = true;
+      # enable + enable32Bit set in hardware-graphics.nix (unconditional)
       extraPackages = with pkgs; [
         vaapiVdpau
         libvdpau

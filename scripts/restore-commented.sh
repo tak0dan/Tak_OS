@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Tak_OS · restore-commented.sh — restore packages commented out during build
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 set -euo pipefail
 
 LOG="/etc/nixos/.auto-commented-packages.log"

@@ -1,9 +1,5 @@
-# ==================================================
-#  Tak_OS (2026)
-#  Project URL: https://github.com/tak0dan/Tak_OS
-#  License: GNU GPLv3
-#  SPDX-License-Identifier: GPL-3.0-or-later
-# ==================================================
+# Tak_OS · system-packages.nix — Global system packages — conditionally loaded per feature
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # SYSTEM-PACKAGES.NIX — environment.systemPackages assembly + package filtering
 # ==============================================================================
@@ -58,6 +54,18 @@
 
         ++ lib.optionals features.hyprland
           (filter (import ../packages/hyprland.nix { inherit pkgs; }))
+
+        # nixos-hyprland integration packages (gated here so nvtop is GPU-conditional)
+        ++ lib.optionals features.hyprland
+          (filter (import ../packages/nixos-hyprland.nix { inherit pkgs; }))
+
+        # nvtop — GPU monitor, variant selected by features.gpu
+        ++ lib.optionals features.hyprland [
+          (if features.gpu == "nvidia" || features.gpu == "nvidia-prime"
+           then pkgs.nvtopPackages.nvidia
+           else if features.gpu == "amd" then pkgs.nvtopPackages.amd
+           else pkgs.nvtopPackages.intel)
+        ]
 
         ++ lib.optionals features.steam
           (filter (import ../packages/games.nix { inherit pkgs; }))

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Tak_OS · nix-rebuild-smart.sh — smart rebuild with retry and diff
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 # Interactive NixOS rebuild + evaluation warning / missing-attribute resolver
 # Uses the nixorcist package index for fast, relevance-ranked suggestions.
 

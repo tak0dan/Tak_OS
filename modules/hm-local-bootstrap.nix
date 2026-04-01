@@ -1,9 +1,5 @@
-# ==================================================
-#  Tak_OS (2026)
-#  Project URL: https://github.com/tak0dan/Tak_OS
-#  License: GNU GPLv3
-#  SPDX-License-Identifier: GPL-3.0-or-later
-# ==================================================
+# Tak_OS · hm-local-bootstrap.nix — Home Manager local-config directory scaffolding
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # HM-LOCAL-BOOTSTRAP.NIX — ~/.hm-local directory scaffold
 # ========================================================

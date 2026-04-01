@@ -1,0 +1,264 @@
+# Tak_OS — Integrity Audit Report
+# Generated: 2026-04-01
+# Auditor: Copilot CLI
+# ============================================================================
+#
+# This file documents all known issues found during a systematic audit of the
+# /etc/nixos configuration. Each issue includes: severity, location, root
+# cause, and the proposed fix. Issues are ordered by severity.
+#
+# Severity levels:
+#   BLOCKER  — prevents rebuild from succeeding right now
+#   HIGH     — causes wrong behaviour or will break on specific config combo
+#   MEDIUM   — potential issue, works in current defaults but fragile
+#   LOW      — cosmetic / dead code / misleading docs
+# ============================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #1 — BLOCKER
+Title:   /etc/nixos/users/*.nix are package-list files, not NixOS modules
+Files:   /etc/nixos/users/tak_1.nix
+         /etc/nixos/users/tak_2.nix
+         /etc/nixos/configuration.nix (imports block)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  The architecture was redesigned (v2→v3) so that per-user files are proper
+  NixOS modules (returning `{ users.users.<name> = { ... }; }`), imported
+  directly into the system via the `__NIXOS_USERS_IMPORTS_*` block. However
+  the existing files in /etc/nixos/users/ were created by the OLD activation-
+  script approach and return a PACKAGE LIST (not a module). NixOS cannot
+  import a file that returns a list as a module → evaluation error.
+
+Error seen:
+  error: module /etc/nixos/users/tak_1.nix does not look like a module.
+
+Fix:
+  Rewrite /etc/nixos/users/tak_1.nix and tak_2.nix as NixOS modules:
+
+  { pkgs, lib, ... }:
+  {
+    users.users.tak_1 = {
+      isNormalUser = true;
+      description  = "Elder Evil";
+      shell        = pkgs.zsh;
+      extraGroups  = [ "wheel" "networkmanager" "vboxusers" "docker"
+                       "audio" "video" "input" ];
+      packages     = [];
+    };
+  }
+
+  Also write /etc/nixos/users/user-list.nix:  [ "tak_1" "tak_2" ]
+
+  These files are root-owned. Run the updated installer (sudo install.sh)
+  which now generates them directly, or run the quick-fix script:
+    sudo /etc/nixos/scripts/fix-users-nix.sh
+
+Status: OPEN — quick-fix script created at /etc/nixos/scripts/fix-users-nix.sh
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #2 — HIGH
+Title:   nvtopPackages.intel hardcoded — breaks AMD/Nvidia builds, pulls CUDA
+Files:   /etc/nixos/packages/nixos-hyprland.nix (line 57)
+         /etc/nixos/packages/all-packages.nix (line 31, 51)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  nixos-hyprland.nix receives only `{ pkgs }` — it has no access to
+  `features`. It hardcodes `nvtopPackages.intel`, which:
+    - Fails or is useless on AMD/Nvidia systems
+    - nvtopPackages.full pulls CUDA, conflicting with non-Nvidia builds
+  nixos-hyprland.nix is imported unconditionally via all-packages.nix → nixhl
+  → included in builtins.concatLists (line 51), so this runs for every build.
+
+Fix:
+  Option A (recommended): Move nvtop selection into system-packages.nix where
+  `features` is available, guarded by `features.hyprland`:
+
+    ++ lib.optionals features.hyprland [
+      (if features.gpu == "amd"    then pkgs.nvtopPackages.amd
+       else if features.gpu == "nvidia" || features.gpu == "nvidia-prime"
+                                   then pkgs.nvtopPackages.nvidia
+       else if features.gpu == "intel" then pkgs.nvtopPackages.intel
+       else pkgs.nvtopPackages.amd)  # generic fallback (amd = lightest)
+    ]
+
+  Remove nvtopPackages.intel from nixos-hyprland.nix.
+
+  Option B: Pass `features` to nixos-hyprland.nix and do the selection there.
+  Requires changing the call site in all-packages.nix to pass features.
+
+Status: OPEN
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #3 — HIGH
+Title:   programs.gamemode conflicts with services.power-profiles-daemon
+Files:   /etc/nixos/modules/gaming.nix (gamemode)
+         /etc/nixos/modules/kernel-params-thinkpad.nix (power-profiles-daemon)
+         /etc/nixos/modules/gameon.nix (sysctl-tweaks, zram, low-latency-audio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  programs.gamemode (gaming.nix) and services.power-profiles-daemon
+  (kernel-params-thinkpad.nix) both try to control the CPU power profile.
+  GameMode requests the "performance" governor on game launch. When
+  power-profiles-daemon is active it holds the power profile lock — GameMode
+  cannot override it, silently doing nothing (CPU stays in "balanced").
+
+  This only triggers when:
+    features.steam = true  AND  features.kernelParams = "thinkpad"
+
+  With kernelParams = "generic" (current default) there is no conflict since
+  generic does not enable power-profiles-daemon.
+
+  Note: On NixOS 25.x, GameMode's upstream now integrates with ppd via DBus,
+  but only if ppd ≥ 0.20. Verify NixOS 25.11 ppd version before dismissing.
+
+Fix:
+  In kernel-params-thinkpad.nix, replace the unconditional ppd enable with
+  a conditional that backs off when gamemode is active:
+
+    services.power-profiles-daemon.enable =
+      lib.mkDefault (!config.programs.gamemode.enable);
+
+  This lets gamemode take control when steam = true, and restores ppd when
+  steam = false.
+
+  Alternatively: document the incompatibility and let the user choose.
+
+Status: OPEN
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #4 — MEDIUM
+Title:   kernel-params.nix (old ThinkPad file) still present, unused but
+         misleading — will confuse future contributors
+Files:   /etc/nixos/modules/kernel-params.nix
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  The old monolithic kernel-params.nix (ThinkPad T480 specific: i915 GuC/HuC,
+  Intel microcode, power-profiles-daemon, hardware.graphics) was replaced by
+  the split kernel-params-{generic,thinkpad,nvidia,amd}.nix files loaded via
+  gpu.nix. The old file is NOT imported by anything but still sits in
+  /etc/nixos/modules/, causing confusion. Its comment says "managed by gpu.nix"
+  but gpu.nix no longer imports it.
+
+  Additionally it sets hardware.graphics unconditionally (duplicating
+  hardware-graphics.nix).
+
+Fix:
+  Delete or archive /etc/nixos/modules/kernel-params.nix.
+  It is dead code. Update README.md if it references it.
+
+Status: OPEN
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #5 — MEDIUM
+Title:   Installer does not set kernelParams — fresh install gets "generic"
+         by coincidence, not by design; ThinkPad users keep "thinkpad" forever
+Files:   /etc/nixos/scripts/install.sh (Phase 3)
+         /etc/nixos/configuration.nix (features.kernelParams default)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  The installer TUI collects hostname, users, and groups but does NOT ask for
+  GPU/kernel profile. The default in configuration.nix is "generic", which is
+  correct for most hardware. BUT: if a ThinkPad T480 user previously had
+  kernelParams = "thinkpad" and re-runs the installer, it stays "thinkpad"
+  because the installer never patches it. If a non-ThinkPad user starts from
+  the repo default that is still "thinkpad" (README says T480 is the reference
+  machine), they would get wrong i915/microcode settings.
+
+Fix:
+  Add a GPU/kernel profile selection to the installer TUI menu:
+    "What hardware do you have?"
+    • Generic / Unknown  (recommended — safe for any system)
+    • ThinkPad T480      (Intel i915 GuC/HuC tuning + microcode)
+    • AMD system         (amd_iommu + ppfeaturemask + AMD microcode)
+    • Nvidia system      (DRM modesetting + nvidia initrd modules)
+
+  Have the installer patch features.kernelParams and features.gpu in
+  configuration.nix via sed (same pattern as hostname patching).
+
+Status: OPEN — planned for installer v3 rewrite
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #6 — MEDIUM
+Title:   nixos-hyprland.nix included unconditionally via all-packages.nix,
+         even when features.hyprland = false
+Files:   /etc/nixos/packages/all-packages.nix (line 31, 51)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  all-packages.nix imports nixos-hyprland.nix and includes it in the output
+  list unconditionally. The guard `lib.optionals features.hyprland [...]` in
+  system-packages.nix covers hyprland.nix but NOT nixos-hyprland.nix (which
+  is loaded via all-packages.nix → nixorcist path, not system-packages.nix).
+  This installs Hyprland-specific tools (nvtop, mesa extras, etc.) even on
+  KDE-only or headless builds.
+
+Fix:
+  Remove nixhl from the builtins.concatLists in all-packages.nix.
+  Move the import into system-packages.nix under lib.optionals features.hyprland,
+  passing features so nvtop can be GPU-conditional (see Issue #2).
+
+Status: OPEN
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUE #7 — LOW
+Title:   hardware.graphics set in three places (duplication, not conflict)
+Files:   /etc/nixos/modules/hardware-graphics.nix
+         /etc/nixos/modules/kernel-params.nix   (dead, see Issue #4)
+         /etc/nixos/modules/amd-drivers.nix
+         /etc/nixos/modules/intel-drivers.nix
+         /etc/nixos/modules/nvidia-drivers.nix
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Root cause:
+  hardware.graphics.enable = true and enable32Bit = true appear in:
+    1. hardware-graphics.nix (unconditional, correct single source of truth)
+    2. kernel-params.nix (dead file, Issue #4)
+    3. amd-drivers.nix / intel-drivers.nix / nvidia-drivers.nix (redundant
+       since hardware-graphics.nix already covers them)
+  Nix merges boolean options with mkMerge so true || true = true — no error,
+  but the duplication is confusing.
+
+Fix:
+  Remove hardware.graphics.enable / enable32Bit from the driver sub-modules
+  (amd/intel/nvidia). Let hardware-graphics.nix be the sole owner.
+  After fixing Issue #4 (delete kernel-params.nix) this resolves itself there.
+
+Status: OPEN (low priority, not breaking)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY TABLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  #  Severity  Status  Title
+  1  BLOCKER   OPEN    users/*.nix are lists not modules → rebuild fails
+  2  HIGH      OPEN    nvtopPackages.intel hardcoded → AMD/Nvidia builds break
+  3  HIGH      OPEN    gamemode + power-profiles-daemon conflict (thinkpad+steam)
+  4  MEDIUM    OPEN    kernel-params.nix dead file, misleading
+  5  MEDIUM    OPEN    Installer doesn't set GPU/kernel profile
+  6  MEDIUM    OPEN    nixos-hyprland.nix loaded unconditionally
+  7  LOW       OPEN    hardware.graphics duplicated across modules
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMMEDIATE ACTION PLAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1 (now):     Fix Issue #1 — run sudo /etc/nixos/scripts/fix-users-nix.sh
+Step 2 (now):     Fix Issue #2 — move nvtop into system-packages.nix, GPU-gated
+Step 3 (now):     Fix Issue #4 — delete dead kernel-params.nix
+Step 4 (now):     Fix Issue #3 — mkDefault ppd in kernel-params-thinkpad.nix
+Step 5 (now):     Fix Issue #6 — gate nixos-hyprland.nix behind hyprland feature
+Step 6 (now):     Fix Issue #7 — remove duplicate hardware.graphics from drivers
+Step 7 (next):    Fix Issue #5 — add GPU selection to installer TUI

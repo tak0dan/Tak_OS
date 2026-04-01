@@ -517,6 +517,7 @@ in
      ./modules/kde.nix           # Qt/KDE runtime → features.kde
      ./modules/openssh.nix       # SSH daemon      → features.openssh
      ./modules/gaming.nix        # Steam + GameMode → features.steam
+     ./modules/virtualbox.nix    # VirtualBox host + Docker → features.virtualisation
 
      # --- System packages (assembles all package groups) ---
      ./modules/system-packages.nix
@@ -577,10 +578,6 @@ in
 
    ++ lib.optionals (!features.uwu) [
      ./modules/default-fastfetch.nix  # Plain NixOS logo
-   ]
-
-   ++ lib.optionals features.virtualisation [
-     ./modules/virtualbox.nix  # VirtualBox host + Docker
    ]
 
    ++ lib.optionals features.gameon.enable [

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Tak_OS · nixos-comment.sh — auto-comment broken package references
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then

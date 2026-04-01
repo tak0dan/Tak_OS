@@ -1,3 +1,5 @@
+# Tak_OS · auto-upgrade.nix — automatic NixOS channel upgrade schedule
+# github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, lib, pkgs, features, ... }:
 
 let

@@ -54,6 +54,13 @@ lib.mkIf (features.hyprland && features.hypr.logout)
           dest = "/home/${user}/.config/wlogout";
         in ''
           echo "[wlogout] Deploying theme '${profile}' for ${user}..."
+          # Always ensure ~/.config exists and is user-owned before copying.
+          # If a previous (failed) run created it as root, the conditional
+          # guard would have been skipped — so we unconditionally fix it here.
+          _hm_cfg="/home/${user}/.config"
+          mkdir -p "$_hm_cfg"
+          chown ${user}:users "$_hm_cfg"
+          chmod 700 "$_hm_cfg"
           rm -rf ${dest}
           cp -r ${themeDir} ${dest}
           chown -R ${user}:users ${dest} 2>/dev/null || true
