@@ -26,32 +26,49 @@
 lib.mkIf (features.hyprland && features.hypr.logout)
 (
   let
-    profile = features.hypr.logoutTheme;
+    validThemes = [ "default" "catppuccin" "minimal" "end4" ];
+    defaultTheme = features.hypr.logoutTheme;
+    overrides = features.hypr.userLogoutThemes or {};
 
-    # Import the theme directory into the Nix store at evaluation time.
-    # builtins.path copies the directory to the store without a builder,
-    # so the sandbox restriction doesn't apply — the path is evaluated on
-    # the host where /etc/nixos is accessible.
-    themeDir = builtins.path {
+    # Resolve the theme for a given user: per-user override → global default.
+    userTheme = user: overrides.${user} or defaultTheme;
+
+    # Build a store path for a theme directory (evaluated once per unique theme).
+    themeDir = profile: builtins.path {
       name = "wlogout-theme-${profile}";
       path = /etc/nixos/assets/wlogout + "/${profile}";
     };
   in
   {
-    assertions = [{
-      assertion = builtins.elem profile [ "default" "catppuccin" "minimal" "end4" ];
-      message   = ''
-        features.hypr.logoutTheme must be one of:
-          "default"  "catppuccin"  "minimal"  "end4"
-        Got: "${profile}"
-      '';
-    }];
+    assertions =
+      # Validate global default.
+      [{
+        assertion = builtins.elem defaultTheme validThemes;
+        message   = ''
+          features.hypr.logoutTheme must be one of:
+            "default"  "catppuccin"  "minimal"  "end4"
+          Got: "${defaultTheme}"
+        '';
+      }]
+      # Validate every per-user override.
+      ++ lib.concatMap (user:
+        let t = overrides.${user} or null; in
+        lib.optional (t != null) {
+          assertion = builtins.elem t validThemes;
+          message   = ''
+            features.hypr.userLogoutThemes.${user} must be one of:
+              "default"  "catppuccin"  "minimal"  "end4"
+            Got: "${t}"
+          '';
+        }
+      ) features.home-manager-users;
 
     system.activationScripts.wlogout-theme = {
       deps = [];
       text = lib.concatMapStrings (user:
         let
-          dest = "/home/${user}/.config/wlogout";
+          profile = userTheme user;
+          dest    = "/home/${user}/.config/wlogout";
         in ''
           echo "[wlogout] Deploying theme '${profile}' for ${user}..."
           # Always ensure ~/.config exists and is user-owned before copying.
@@ -62,7 +79,7 @@ lib.mkIf (features.hyprland && features.hypr.logout)
           chown ${user}:users "$_hm_cfg"
           chmod 700 "$_hm_cfg"
           rm -rf ${dest}
-          cp -r ${themeDir} ${dest}
+          cp -r ${themeDir profile} ${dest}
           chown -R ${user}:users ${dest} 2>/dev/null || true
           chmod -R u+w ${dest}
         ''
