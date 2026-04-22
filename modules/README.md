@@ -72,6 +72,7 @@ modules/
 ├── gaming.nix                 ← Steam + GameMode (guarded by features.steam)
 ├── openssh.nix                ← SSH daemon (guarded by features.openssh)
 ├── virtualbox.nix             ← VirtualBox host + Docker (guarded by features.virtualisation)
+├── flatpak.nix                ← Flatpak runtime + Flathub (guarded by features.flatpak)
 ├── window-managers.nix        ← Hyprland, bspwm, i3, xkb (loaded when features.hyprland)
 ├── portals.nix                ← XDG portals: screen share, file picker
 ├── quickshell.nix             ← Wayland shell widget layer

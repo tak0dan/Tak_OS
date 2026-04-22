@@ -407,6 +407,16 @@ let
     # __TAKOS_FEATURE_VIRTUALISATION_END__
 
     # =========================================================================
+    # 📦 FLATPAK
+    # =========================================================================
+    # Optional Flatpak runtime support + Flathub remote.
+    # → modules/flatpak.nix
+    #
+    # __TAKOS_FEATURE_FLATPAK_START__
+    flatpak = true;
+    # __TAKOS_FEATURE_FLATPAK_END__
+
+    # =========================================================================
     # 🤖 NIXORCIST   (Work in progress)
     # =========================================================================
     # Custom package automation system (see /etc/nixos/nixorcist/).
@@ -551,6 +561,7 @@ in
      ./modules/openssh.nix       # SSH daemon      → features.openssh
      ./modules/gaming.nix        # Steam + GameMode → features.steam
      ./modules/virtualbox.nix    # VirtualBox host + Docker → features.virtualisation
+     ./modules/flatpak.nix       # Flatpak runtime + Flathub → features.flatpak
 
      # --- System packages (assembles all package groups) ---
      ./modules/system-packages.nix

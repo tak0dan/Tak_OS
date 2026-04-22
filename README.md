@@ -145,6 +145,7 @@ features = {
   steam          = true;              # Steam + GameMode
   uwu            = true;              # NixOwOS branding overlay
   virtualisation = false;             # Docker + VirtualBox host (off by default)
+  flatpak        = true;              # Flatpak runtime + Flathub support
   nixorcist      = true;              # CLI package management layer
   openssh        = true;              # SSH daemon
   home-manager   = true;              # Declarative /home/ management
@@ -191,6 +192,7 @@ These are imported unconditionally, regardless of any feature flag:
 | `features.home-manager = true` | `<home-manager/nixos>`, `hm-users` |
 | `features.uwu = true` | `uwu/nixowos.nix` |
 | `features.virtualisation = true` | `virtualbox.nix` (+ Docker) |
+| `features.flatpak = true` | `flatpak.nix` (Flatpak runtime + Flathub) |
 | `features.kde = true` | activates Qt/KDE inside `kde.nix` |
 | `features.steam = true` | activates Steam inside `gaming.nix` |
 | `features.openssh = true` | activates SSH inside `openssh.nix` |
