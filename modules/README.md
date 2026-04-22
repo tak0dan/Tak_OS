@@ -183,7 +183,7 @@ Three files cooperate for Home Manager support:
 |------|------|
 | `hm-home-scaffold.nix` | Default `home.nix` template written to `~/.hm-local/home.nix` |
 | `hm-local-bootstrap.nix` | Activation script: creates `~/.hm-local/`, detects and fixes empty or corrupt `home.nix` |
-| `hm-users.nix` | Declares which system users get Home Manager profiles (reads `features.home-manager-users`) |
+| `hm-users.nix` | Declares which system users get Home Manager profiles (reads `features.home-manager-users`, typically generated from `users-declared/user-list.nix`) |
 
 The bootstrap logic recreates `~/.hm-local/home.nix` if the file is:
 - missing
@@ -329,7 +329,7 @@ hm-local-bootstrap.nix
   └─ writes → ~/.hm-local/home.nix  (only when missing / empty / corrupt)
 
 hm-users.nix
-  └─ reads → features.home-manager-users  (to declare per-user HM config)
+  └─ reads → features.home-manager-users  (usually sourced from users-declared/user-list.nix)
   └─ points each user at → ~/.hm-local/home.nix (or default.nix)
 ```
 

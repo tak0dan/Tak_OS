@@ -60,5 +60,5 @@
 #      enableExtensionPack = true;
 #    };
 
-#    users.users.tak_1.extraGroups = [ "vboxusers" ];
+#    users.users.<name>.extraGroups = [ "vboxusers" ];
 }

@@ -33,11 +33,11 @@ evaluation and have no effect on the system configuration itself.
 **Run this once on a fresh NixOS machine** after cloning the repo.
 No manual file editing required — everything is detected automatically.
 
-**Auto-detected values (no prompts):**
+**Auto-detected values (no manual user creation):**
 
 | Value | Source |
 |-------|--------|
-| Username | `$SUDO_USER` → `logname` → parsed from `/etc/nixos/configuration.nix` |
+| Users | Existing human users discovered from `getent passwd` + current group membership |
 | Hostname | `hostname -s` |
 | Target NixOS version | `system.stateVersion` in the repo's `configuration.nix` |
 
@@ -50,13 +50,25 @@ No manual file editing required — everything is detected automatically.
    before Tak_OS is applied).
 
 *Phase 2 — Tak_OS deployment*
-3. Patches `modules/users.nix`, `modules/networking.nix`, and
-   `configuration.nix` with your real username and hostname.
+3. Creates a temporary staged copy of the repo, rewrites repo-specific user
+   data there from discovered system users, exports `users-declared/<name>.nix`,
+   rebuilds the users hub, and patches the hostname / GPU profile there only.
 4. Defaults `kernelParams` to `"generic"` (safe for any hardware; change it
    later once you know your GPU/CPU profile).
 5. Deploys the full config to `/etc/nixos/` via `rsync`, preserving
    `hardware-configuration.nix` and the nixorcist cache.
 6. Runs `nixos-rebuild switch` into Tak_OS.
+
+> **Important:** the installer rewrites only the staged/deployed copy. Your git
+> checkout stays unchanged, so you can keep your own personal config in the repo
+> without cleaning it up after every install.
+
+The staged rewrite is meant for machine-bound values such as:
+
+- usernames referenced in `users-declared/`
+- `features.home-manager-users`
+- module comments or examples that still mention repo user names
+- hostname / GPU choices selected during install
 
 ```bash
 sudo bash /path/to/Tak_OS/scripts/install.sh
@@ -75,7 +87,7 @@ The primary rebuild helper. Wraps `nixos-rebuild switch` with a retry loop that:
 1. Captures the build log on failure.
 2. Detects `attribute 'X' missing` / `undefined variable 'X'` errors.
 3. Checks a well-known rename table (e.g. `python` → `python3`, `thunar` → `xfce.thunar`).
-4. Falls back to ranked search against the nixorcist package index.
+4. Falls back to ranked search against the nixorcist package index, then a local nixpkgs attr cache built from the current channel.
 5. If the failure looks network-sensitive for optional apps (for example Discord on restricted networks), disables those optional packages and retries instead of killing the whole rebuild.
 6. Offers an interactive replacement prompt.
 7. Retries with the resolved state.
@@ -147,6 +159,9 @@ Copies the repository working tree into `/etc/nixos`, with automatic backup:
 1. Renames any existing `~/nixos-backup` to `~/nixos-backup-before-<timestamp>`.
 2. Creates a fresh `~/nixos-backup` from the current `/etc/nixos`.
 3. Copies the repo into `/etc/nixos`.
+
+Unlike `install.sh`, this helper does **not** rewrite usernames or other
+machine-specific values first; it is a straight deploy/backup tool.
 
 Must be run as root:
 

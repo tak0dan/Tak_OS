@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
-# Tak_OS · install.sh v4 — declarative installer with discovered-user export
+# Tak_OS · install.sh v4 — staged installer with discovered-user export
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # Phases:
 #   1  Channel upgrade
 #   2  TUI host / GPU review + discovered-user export preview
-#   3  Generate per-user .nix files + user-list.nix + users hub + patch imports + hostname + GPU
-#   4  Deploy PROJECT_DIR → /etc/nixos
+#   3  Stage repo copy + remap repo user data + generate user hub + hostname + GPU
+#   4  Deploy staged copy → /etc/nixos
 #   5  Adaptive build
 #   6  Switch
 #   7  Optional restore of auto-commented packages
 #
-# Usage:  sudo bash /path/to/Tak_OS/scripts/install.sh [--fallback]
+# Usage:  sudo bash /path/to/Tak_OS/scripts/install.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR="/etc/nixos"
-USERS_DIR="${TARGET_DIR}/users-declared"
+TARGET_USERS_DIR="${TARGET_DIR}/users-declared"
+USERS_DIR="${PROJECT_DIR}/users-declared"
 DISCOVER_USERS_SCRIPT="${PROJECT_DIR}/scripts/discover-users.sh"
+STAGE_DIR=""
+TEMP_ROOT=""
 
 SCAN_PATHS=("$TARGET_DIR/configuration.nix" "$TARGET_DIR/modules" "$TARGET_DIR/packages")
 COMMENT_LOG="$TARGET_DIR/.auto-commented-packages.log"
 touch "$COMMENT_LOG" 2>/dev/null || true
-
-FALLBACK_MODE="false"
-[[ "${1:-}" == "--fallback" ]] && FALLBACK_MODE="true"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -34,6 +34,10 @@ ok()    { printf "${GREEN}[✓]${RESET} %s\n" "$*"; }
 warn()  { printf "${YELLOW}[!]${RESET} %s\n" "$*"; }
 die()   { printf "${RED}[✗]${RESET} %s\n"   "$*" >&2; exit 1; }
 step()  { printf "\n${BOLD}${CYAN}──── %s ────${RESET}\n" "$*"; }
+cleanup() {
+  [[ -n "${TEMP_ROOT:-}" && -d "${TEMP_ROOT}" ]] && rm -rf "${TEMP_ROOT}"
+}
+trap cleanup EXIT
 
 [[ "${EUID}" -ne 0 ]] && die "Run as root: sudo $0"
 
@@ -146,7 +150,6 @@ open(path, 'w').write(text)
 PY
 }
 
-apply_feature_markers "${PROJECT_DIR}/configuration.nix"
 VIRT_FEATURE="$(feature_value VIRTUALISATION)"
 
 load_discovered_users() {
@@ -167,7 +170,106 @@ load_discovered_users() {
   done < <("$DISCOVER_USERS_SCRIPT")
 }
 
+load_repo_users() {
+  local base_dir="${1:-$PROJECT_DIR}"
+  local repo_users_dir="${base_dir}/users-declared"
+  local list_file="${repo_users_dir}/user-list.nix"
+  REPO_USERS=()
+
+  if [[ -f "$list_file" ]]; then
+    mapfile -t REPO_USERS < <(python3 - "$list_file" <<'PY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+for name in re.findall(r'"([^"]+)"', text):
+    print(name)
+PY
+)
+  fi
+
+  if [[ ${#REPO_USERS[@]} -eq 0 && -d "$repo_users_dir" ]]; then
+    mapfile -t REPO_USERS < <(
+      find "$repo_users_dir" -maxdepth 1 -type f -name '*.nix' \
+        ! -name 'default.nix' ! -name 'user-modules.nix' ! -name 'user-list.nix' ! -name 'extra-users.nix' \
+        -printf '%f\n' | sed 's/\.nix$//' | sort
+    )
+  fi
+}
+
+build_user_mapping() {
+  declare -gA USER_MAP=()
+  local primary="${DISCOVERED_USERS[0]:-}" idx repo_user mapped
+  for idx in "${!REPO_USERS[@]}"; do
+    repo_user="${REPO_USERS[$idx]}"
+    mapped="${DISCOVERED_USERS[$idx]:-$primary}"
+    [[ -n "$repo_user" && -n "$mapped" ]] || continue
+    USER_MAP["$repo_user"]="$mapped"
+  done
+}
+
+user_mapping_summary() {
+  local repo_user out=""
+  for repo_user in "${REPO_USERS[@]}"; do
+    [[ -n "${USER_MAP[$repo_user]:-}" ]] || continue
+    out+="${repo_user} -> ${USER_MAP[$repo_user]}"$'\n'
+  done
+  printf '%s' "${out:-"(none)"}"
+}
+
+stage_project_copy() {
+  TEMP_ROOT="$(mktemp -d)"
+  STAGE_DIR="${TEMP_ROOT}/nixos-stage"
+  rsync -a --delete "${PROJECT_DIR}/" "${STAGE_DIR}/"
+  USERS_DIR="${STAGE_DIR}/users-declared"
+  mkdir -p "$USERS_DIR"
+}
+
+rewrite_repo_user_data() {
+  local base_dir="$1" args=() repo_user
+  for repo_user in "${REPO_USERS[@]}"; do
+    [[ -n "${USER_MAP[$repo_user]:-}" ]] || continue
+    [[ "$repo_user" == "${USER_MAP[$repo_user]}" ]] && continue
+    args+=("${repo_user}=${USER_MAP[$repo_user]}")
+  done
+  [[ ${#args[@]} -eq 0 ]] && return 0
+
+  python3 - "$base_dir" "${args[@]}" <<'PY'
+import os
+import re
+import sys
+
+base_dir = sys.argv[1]
+pairs = [arg.split("=", 1) for arg in sys.argv[2:]]
+patterns = [(re.compile(rf"\b{re.escape(old)}\b"), new) for old, new in pairs if old and new and old != new]
+suffixes = {
+    ".nix", ".sh", ".md", ".conf", ".toml", ".json", ".yaml", ".yml", ".ini", ".txt"
+}
+
+changed = 0
+for root, dirs, files in os.walk(base_dir):
+    dirs[:] = [d for d in dirs if d not in {".git", "result"}]
+    for file_name in files:
+        if os.path.splitext(file_name)[1] not in suffixes:
+            continue
+        path = os.path.join(root, file_name)
+        try:
+            text = open(path, encoding="utf-8").read()
+        except Exception:
+            continue
+        new_text = text
+        for pattern, replacement in patterns:
+            new_text = pattern.sub(replacement, new_text)
+        if new_text != text:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(new_text)
+            changed += 1
+
+print(changed)
+PY
+}
+
 load_discovered_users
+load_repo_users
+build_user_mapping
 
 printf "\n${BOLD}${CYAN}"
 cat << 'BANNER'
@@ -238,7 +340,7 @@ scr_users() {
 scr_extra() {
   if tui_yesno "Extra Users" \
 "Enable extra-users.nix?
-Creates ${USERS_DIR}/extra-users.nix — edit for full users.users.<name> control.
+Creates users-declared/extra-users.nix in the staged install copy — edit for full users.users.<name> control.
 Current: $(_lextra)"; then
     EXTRA_ENABLE="true"
   else
@@ -248,6 +350,8 @@ Current: $(_lextra)"; then
 
 scr_review() {
   local _users="${DISCOVERED_USERS[*]:-—}"
+  local _repo_users="${REPO_USERS[*]:-(none detected)}"
+  local _mapping; _mapping="$(user_mapping_summary)"
   tui_msg "Review" \
 "Hostname       : ${INSTALL_HOST}
 
@@ -255,11 +359,15 @@ GPU            : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
 NixOS          : ${REPO_VERSION}
 Virtualisation : ${VIRT_FEATURE}
 
+Repo users     : ${_repo_users}
 Discovered users: ${_users}
+User remap     :
+${_mapping}
 Extra nix      : ${EXTRA_ENABLE}
 
 Manual user creation has been removed from the installer.
-Existing users will be exported into separate declarations and linked through the users hub."
+Existing users will be exported into separate declarations and linked through the users hub.
+Your repository working tree is left untouched; replacements happen only in the staged install copy."
 }
 
 _APPLIED="false"
@@ -291,52 +399,43 @@ done
 [[ "$_APPLIED" != "true" ]] && die "Nothing applied."
 
 step "Phase 3: Generating configuration"
-mkdir -p "$USERS_DIR"
-
-build_groups() {
-  local is_admin="$1" net="$2" virt="$3" audio="$4" video="$5" input="$6" plugdev="$7"
-  local -a g=()
-  [[ "$is_admin" == "true" ]] && g+=("\"wheel\"")
-  [[ "$net"      == "true" ]] && g+=("\"networkmanager\"")
-  if [[ "$virt" == "true" ]]; then
-    if [[ "$VIRT_FEATURE" == "true" ]]; then g+=("\"vboxusers\"" "\"docker\"")
-    else warn "User wants virtualisation groups but features.virtualisation=false — skipping vboxusers/docker"; fi
-  fi
-  [[ "$audio"   == "true" ]] && g+=("\"audio\"")
-  [[ "$video"   == "true" ]] && g+=("\"video\"")
-  [[ "$input"   == "true" ]] && g+=("\"input\"")
-  [[ "$plugdev" == "true" ]] && g+=("\"plugdev\"")
-  printf '%s\n' "${g[@]}"
-}
+stage_project_copy
+rewrite_repo_user_data "${STAGE_DIR}" >/dev/null
+apply_feature_markers "${STAGE_DIR}/configuration.nix"
 
 write_user_file() {
   local name="$1" desc="$2" shell="$3" is_admin="$4"
   local net="$5" virt="$6" audio="$7" video="$8" input="$9" plugdev="${10}"
-  local -a grp_lines=()
-  while IFS= read -r g; do [[ -n "$g" ]] && grp_lines+=("      $g"); done \
-    < <(build_groups "$is_admin" "$net" "$virt" "$audio" "$video" "$input" "$plugdev")
-  local gnix
-  if [[ ${#grp_lines[@]} -eq 0 ]]; then gnix="[]"
-  else gnix=$'[\n'; for g in "${grp_lines[@]}"; do gnix+="$g"$'\n'; done; gnix+="    ]"; fi
   cat > "${USERS_DIR}/${name}.nix" << NIX
 # ===========================================================
 #  Tak_OS — system user: ${name}
 #  Generated by the Tak_OS installer. Safe to edit.
 # ===========================================================
-{ pkgs, lib, ... }:
+{ pkgs, lib, features, ... }:
+let
+  extraGroups =
+    [ ]
+    ++ lib.optionals ${is_admin} [ "wheel" ]
+    ++ lib.optionals ${net} [ "networkmanager" ]
+    ++ lib.optionals (${virt} && features.virtualisation) [ "vboxusers" "docker" ]
+    ++ lib.optionals ${audio} [ "audio" ]
+    ++ lib.optionals ${video} [ "video" ]
+    ++ lib.optionals ${input} [ "input" ]
+    ++ lib.optionals ${plugdev} [ "plugdev" ];
+in
 {
   users.users.${name} = {
     isNormalUser = true;
     description  = "${desc}";
     shell        = pkgs.${shell};
-    extraGroups  = ${gnix};
+    extraGroups  = extraGroups;
     packages = [
       # pkgs.kate
     ];
   };
 }
 NIX
-  info "Wrote ${USERS_DIR}/${name}.nix"
+  info "Wrote staged ${USERS_DIR}/${name}.nix"
 }
 
 for u in "${DISCOVERED_USERS[@]}"; do
@@ -367,7 +466,7 @@ NIX
 fi
 
 {
-  printf '# Generated by Tak_OS installer\n[ '
+  printf '# Generated by Tak_OS installer/helper\n[ '
   for u in "${DISCOVERED_USERS[@]}"; do printf '"%s" ' "$u"; done
   printf ']\n'
 } > "${USERS_DIR}/user-list.nix"
@@ -391,40 +490,21 @@ NIX
 } > "${USERS_DIR}/user-modules.nix"
 info "Wrote ${USERS_DIR}/default.nix and ${USERS_DIR}/user-modules.nix"
 
-python3 - "${PROJECT_DIR}/configuration.nix" << 'PYEOF'
-import sys
-cfg = sys.argv[1]
-start = '# __NIXOS_USERS_IMPORTS_START__'
-end = '# __NIXOS_USERS_IMPORTS_END__'
-content = open(cfg).read()
-si = content.find(start); ei = content.find(end)
-if si == -1 or ei == -1 or si >= ei:
-    raise SystemExit('ERROR: user import markers not found or invalid')
-ls = content.rfind('\n', 0, si) + 1
-le = content.find('\n', ei); le = len(content) if le == -1 else le + 1
-block = '     ' + start + '\n' + '     ./users-declared/default.nix\n' + '     ' + end + '\n'
-open(cfg, 'w').write(content[:ls] + block + content[le:])
-PYEOF
-
-apply_feature_markers "${PROJECT_DIR}/configuration.nix"
 sed -i "s/networking\.hostName = \"[^\"]*\"/networking.hostName = \"${INSTALL_HOST}\"/" \
-  "${PROJECT_DIR}/modules/networking.nix"
+  "${STAGE_DIR}/modules/networking.nix"
 sed -i "s/kernelParams\s*=\s*\"[^\"]*\"/kernelParams = \"${GPU_KERNEL}\"/" \
-  "${PROJECT_DIR}/configuration.nix"
+  "${STAGE_DIR}/configuration.nix"
 sed -i "s/^\(\s*gpu\s*=\s*\)\"[^\"]*\"/\1\"${GPU_DRIVER}\"/" \
-  "${PROJECT_DIR}/configuration.nix"
-VIRT_FEATURE="$(feature_value VIRTUALISATION)"
+  "${STAGE_DIR}/configuration.nix"
 info "Hostname=${INSTALL_HOST}  GPU=${GPU_KERNEL}/${GPU_DRIVER}"
-info "Feature defaults applied via marker blocks (heavy modules disabled by default)."
+info "Repo user data was remapped only inside the staged install copy."
+info "Feature defaults applied via marker blocks; virtualisation stays disabled by default."
 ok "Configuration generated."
 
 step "Phase 4: Deploying to ${TARGET_DIR}"
-_tmpdir="$(mktemp -d)"; trap 'rm -rf "$_tmpdir"' EXIT
-[[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && cp "${TARGET_DIR}/hardware-configuration.nix" "$_tmpdir/"
-rsync -a --delete "${PROJECT_DIR}/" "${TARGET_DIR}/"
-[[ -f "$_tmpdir/hardware-configuration.nix" ]] && cp "$_tmpdir/hardware-configuration.nix" "${TARGET_DIR}/"
-mkdir -p "${TARGET_DIR}/users-declared"
-cp "${USERS_DIR}"/*.nix "${TARGET_DIR}/users-declared/" 2>/dev/null || true
+[[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && cp "${TARGET_DIR}/hardware-configuration.nix" "${TEMP_ROOT}/hardware-configuration.nix"
+rsync -a --delete "${STAGE_DIR}/" "${TARGET_DIR}/"
+[[ -f "${TEMP_ROOT}/hardware-configuration.nix" ]] && cp "${TEMP_ROOT}/hardware-configuration.nix" "${TARGET_DIR}/"
 ok "Deployment complete."
 
 step "Phase 5: Adaptive build"
@@ -438,13 +518,6 @@ auto_fix() {
     local var; var="$(grep -oP "undefined variable ['\`]\K[^'\`]+" "$LOG" | head -1 || true)"
     if [[ -z "$var" ]]; then
       warn "Unhandled error. Check $LOG."
-      [[ "$FALLBACK_MODE" == "true" ]] && {
-        local fa="${DISCOVERED_USERS[0]:-tak_1}"
-        warn "Fallback: sed-replacing 'tak_1' → '$fa'..."
-        grep -rl "tak_1" "${TARGET_DIR}/configuration.nix" "${TARGET_DIR}/modules/" --include="*.nix" 2>/dev/null \
-          | while read -r f; do sed -i "s/\btak_1\b/${fa}/g" "$f"; warn "  patched: $f"; done
-        nixos-rebuild build 2>&1 | tail -3; return 0
-      }
       return 1
     fi
     warn "Auto-commenting: '$var'"
@@ -482,8 +555,8 @@ chmod +x "$RESTORE"
     && { "$RESTORE"; info "Rebuilding…"; nixos-rebuild switch; } || true; }
 
 printf "\n${GREEN}${BOLD}  Tak_OS installation complete.${RESET}\n\n"
-printf "  Per-user files : ${USERS_DIR}/<name>.nix\n"
-printf "  Users hub      : ${USERS_DIR}/default.nix\n"
+printf "  Per-user files : ${TARGET_USERS_DIR}/<name>.nix\n"
+printf "  Users hub      : ${TARGET_USERS_DIR}/default.nix\n"
 printf "  Home Manager   : ~/.hm-local/home.nix  (per user)\n"
 printf "  GPU            : kernelParams=%s  driver=%s\n" "$GPU_KERNEL" "$GPU_DRIVER"
 [[ -s "$COMMENT_LOG" ]] && printf "  Restore pkgs   : sudo %s\n" "$RESTORE"

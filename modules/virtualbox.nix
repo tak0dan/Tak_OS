@@ -38,11 +38,6 @@ lib.mkIf features.virtualisation {
   # };
 
   ############################
-  # User access
-  ############################
-  users.users.tak_1.extraGroups = [ "vboxusers" ];
-
-  ############################
   # Allow the unfree Extension Pack licence
   ############################
   nixpkgs.config.allowUnfree = true;

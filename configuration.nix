@@ -446,20 +446,17 @@ let
     #
     home-manager = true;
     home-manager-users =
-      # Derived from /etc/nixos/users-declared/user-list.nix (written by the installer).
+      # Derived from ./users-declared/user-list.nix (written by the installer/helper).
       # To change the list, re-run the installer or edit user-list.nix directly.
-      let f = /etc/nixos/users-declared/user-list.nix;
+      let f = ./users-declared/user-list.nix;
       in if builtins.pathExists f then import f else [];
     # =========================================================================
     # =========================================================================
     # 👤 SYSTEM USERS
     # =========================================================================
-    # Per-user NixOS modules live in /etc/nixos/users-declared/<name>.nix.
+    # Per-user NixOS modules live in ./users-declared/<name>.nix.
     # They are generated from discovered existing users by the Tak_OS installer.
-    # The installer links them through /etc/nixos/users-declared/default.nix.
-    #
-    # The installer patches the import block below (between the markers).
-    # Do not manually edit the lines between the markers — use the installer.
+    # modules/users.nix links the generated users hub automatically.
     #
 
     # 🤖 GITHUB COPILOT CLI
@@ -531,12 +528,10 @@ in
      ./modules/sddm.nix #<--- Idk, this shit ocasionally works, but don't really rely on it :)
 
      # --- Core system ---
-     ./modules/locale.nix        #<--- Make sure to use YOUR locale
-     ./modules/networking.nix    #<--- Change your networking name here
-     # __NIXOS_USERS_IMPORTS_START__
-     ./users-declared/default.nix
-     # __NIXOS_USERS_IMPORTS_END__
-     ./modules/audio.nix         # PipeWire (ALSA + PulseAudio compat + rtkit)
+      ./modules/locale.nix        #<--- Make sure to use YOUR locale
+      ./modules/networking.nix    #<--- Change your networking name here
+      ./modules/users.nix
+      ./modules/audio.nix         # PipeWire (ALSA + PulseAudio compat + rtkit)
      ./modules/hardware-graphics.nix  # Mesa / VA-API + 32-bit libs
      ./modules/keyring.nix       # GNOME Keyring secret store
         # --- Auto Update ---

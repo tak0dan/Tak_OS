@@ -24,7 +24,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/tak0dan/Tak_OS/main/scripts/
 The bootstrap script will:
 - Skip cloning if `~/Tak_OS` already exists
 - Ask whether to include wallpapers (~200 MB) and clone with or without `assets/Wallpapers`
-- Run `scripts/install.sh` to apply the configuration
+- Run `scripts/install.sh` to apply the configuration from a temporary staged copy
 
 ---
 
@@ -63,6 +63,8 @@ Goals:
 - **User handling should be declarative** — the installer discovers existing
   users and exports them into separate declarations instead of manually
   creating users inside the install flow.
+- **Your checkout should stay commitable** — installer-specific rewrites happen
+  in a transient staged copy, not in the repository working tree.
 
 ---
 
@@ -149,7 +151,7 @@ features = {
   nixorcist      = true;              # CLI package management layer
   openssh        = true;              # SSH daemon
   home-manager   = true;              # Declarative /home/ management
-  home-manager-users = [ "tak_1" ];   # Users managed by Home Manager
+  home-manager-users = let f = ./users-declared/user-list.nix; in if builtins.pathExists f then import f else [];
   copilot        = true;              # GitHub Copilot CLI
 };
 ```
@@ -157,8 +159,14 @@ features = {
 Changing a flag and running `sudo nixos-smart-rebuild` is all it takes.
 No hunting through module files.
 
-The installer also exports discovered existing users into `/etc/nixos/users-declared/`
-and links them through a users hub instead of relying on manual user creation.
+The installer stages a temporary copy of the repo, rewrites repo-specific user
+data from the current machine there, and exports discovered existing users into
+`/etc/nixos/users-declared/` through a users hub instead of relying on manual
+user creation.
+
+That means you can keep your personal usernames and machine-specific defaults in
+the repo while still installing onto another machine without cleaning the tree
+before every commit.
 
 #### Always-loaded modules
 
@@ -172,7 +180,7 @@ These are imported unconditionally, regardless of any feature flag:
 | `modules/sddm.nix` | Display manager |
 | `modules/locale.nix` | Timezone, locale, keyboard |
 | `modules/networking.nix` | NetworkManager, hostname |
-| `modules/users.nix` | System user accounts |
+| `modules/users.nix` | Declarative user hub importing `users-declared/` |
 | `modules/audio.nix` | PipeWire |
 | `modules/hardware-graphics.nix` | Mesa / VA-API |
 | `modules/keyring.nix` | GNOME Keyring |
@@ -276,21 +284,24 @@ See [`packages/README.md`](packages/README.md) for the full picture.
 # 1. Clone the repo
 git clone https://github.com/tak0dan/Tak_OS.git /etc/nixos
 
-# 2. Review and adjust feature flags
+# 2. Run the installer
+sudo bash /etc/nixos/scripts/install.sh
+
+# 3. Review the deployed machine-specific copy
 sudoedit /etc/nixos/configuration.nix
-
-# 3. Set your locale, hostname, and username
-sudoedit /etc/nixos/modules/locale.nix
 sudoedit /etc/nixos/modules/networking.nix
-sudoedit /etc/nixos/modules/users.nix
+sudoedit /etc/nixos/users-declared/user-list.nix
 
-# 4. Bootstrap nixorcist
-sudo nixorcist gen
-sudo nixorcist hub
-
-# 5. Rebuild
-sudo nixos-rebuild switch
+# 4. Rebuild after your own adjustments
+sudo nixos-smart-rebuild
 ```
+
+The installer will:
+
+1. Detect existing human users from the target system.
+2. Map any repo user identities onto those discovered users inside a staged copy.
+3. Regenerate `/etc/nixos/users-declared/*.nix` and the users hub from that staged copy.
+4. Leave the git checkout itself untouched.
 
 ### Add your own packages
 

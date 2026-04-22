@@ -2,6 +2,16 @@
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 { config, pkgs, lib, ... }:
 
+let
+  networkManagerUsers = builtins.attrNames (lib.filterAttrs (_: user:
+    (user.isNormalUser or false)
+    && builtins.elem "networkmanager" (user.extraGroups or [ ])
+  ) config.users.users);
+
+  polkitUserMatch =
+    lib.concatStringsSep " || "
+      (map (user: ''subject.user == "${user}"'') networkManagerUsers);
+in
 {
   networking.hostName = "Tak0_NixOS";
   networking.networkmanager.enable = true;
@@ -18,14 +28,13 @@
   # └──────────────────────────────────────────────────────────────────────────┘
   #
   # The service runs after graphical-session.target (keyring is unlocked).
-  # Polkit allows tak_1 to manage NetworkManager connections without sudo.
+  # Polkit allows declared NetworkManager users to manage NM connections without sudo.
   #
 
-  # Allow tak_1 to manage NM connections from user context
-  security.polkit.extraConfig = ''
+  security.polkit.extraConfig = lib.optionalString (networkManagerUsers != [ ]) ''
     polkit.addRule(function(action, subject) {
       if (action.id == "org.freedesktop.NetworkManager.network-control" &&
-          subject.user == "tak_1") {
+          (${polkitUserMatch})) {
         return polkit.Result.YES;
       }
     });

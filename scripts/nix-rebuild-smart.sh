@@ -11,6 +11,7 @@ NIXORCIST_INDEX="${CONFIG_DIR}/nixorcist/cache/nixpkgs-index.txt"
 NIXORCIST_LOCK="${CONFIG_DIR}/nixorcist/generated/.lock"
 DISABLED_LIST="${CONFIG_DIR}/packages/disabled/disabled-packages.nix"
 TMP_LOG="$(mktemp)"
+LOCAL_ATTR_CACHE="${CONFIG_DIR}/nixorcist/cache/local-nixpkgs-attrs.txt"
 
 # ─── File helpers ─────────────────────────────────────────────────────────────
 
@@ -60,6 +61,39 @@ _index_get_desc() {
         "$NIXORCIST_INDEX"
 }
 
+_ensure_local_attr_cache() {
+    [[ -f "$LOCAL_ATTR_CACHE" && -s "$LOCAL_ATTR_CACHE" ]] && return 0
+    mkdir -p "$(dirname "$LOCAL_ATTR_CACHE")"
+    echo "Building local nixpkgs attr cache..."
+    if { nix-env -f '<nixpkgs>' -qaP --description '*' \
+        | awk -F'\t' '{ print $1 "|" $NF }' > "$LOCAL_ATTR_CACHE".tmp; } 2>/dev/null; then
+        mv "$LOCAL_ATTR_CACHE".tmp "$LOCAL_ATTR_CACHE"
+        return 0
+    fi
+    rm -f "$LOCAL_ATTR_CACHE".tmp
+    return 1
+}
+
+_local_find_similar() {
+    local query="$1"
+    _ensure_local_attr_cache || return 0
+    awk -F'|' -v q="$query" '
+        BEGIN { ql = tolower(q) }
+        {
+            path = $1
+            n = split(path, parts, ".")
+            leaf = tolower(parts[n])
+            if      (leaf == ql)                                          { score = 0 }
+            else if (substr(leaf, 1, length(ql)) == ql)                   { score = 1 }
+            else if (substr(leaf, length(leaf)-length(ql)+1) == ql)       { score = 2 }
+            else if (path ~ ("(^|[.])" ql "($|[.])"))                     { score = 3 }
+            else if (leaf ~ ("(^|[-_])" ql "($|[-_])"))                   { score = 4 }
+            else { next }
+            printf "%d|%s\n", score, path
+        }
+    ' "$LOCAL_ATTR_CACHE" | sort -t'|' -k1,1n -k2,2 | cut -d'|' -f2 | head -12
+}
+
 # ─── Interactive resolver for a single missing attribute ─────────────────────
 
 _resolve_missing_attr() {
@@ -96,6 +130,11 @@ _resolve_missing_attr() {
         local c; for c in "${candidates[@]}"; do [[ "$c" == "$found" ]] && already=1; done
         (( already )) || candidates+=("$found")
     done < <(_index_find_similar "$attr")
+    while IFS= read -r found; do
+        local already=0
+        local c; for c in "${candidates[@]}"; do [[ "$c" == "$found" ]] && already=1; done
+        (( already )) || candidates+=("$found")
+    done < <(_local_find_similar "$attr")
 
     if [[ ${#candidates[@]} -eq 0 ]]; then
         printf '  No close matches found in the index.\n'
@@ -194,10 +233,13 @@ PY
 
 _handle_network_sensitive_failures() {
     local log="$1"
-    local -a sensitive=(discord discord-canary discord-development discord-ptb simplex-chat)
+    local -a sensitive=(
+        discord discord-canary discord-development discord-ptb
+        simplex-chat vesktop spotify teams-for-linux
+    )
     local matched=0 pkg
     for pkg in "${sensitive[@]}"; do
-        if grep -Eiq "(${pkg}|fetchurl|curl:|Could not resolve host|TLS|SSL|Connection timed out|Connection reset|Network is unreachable|HTTP error 403|HTTP error 429)" "$log"; then
+        if grep -Eiq "(${pkg}|fetchurl|curl:|wget:|Could not resolve host|TLS|SSL|Connection timed out|Connection reset|Network is unreachable|HTTP error 403|HTTP error 429|failed to download|download failed|Connection refused)" "$log"; then
             _disable_package_globally "$pkg" || true
             matched=1
         fi

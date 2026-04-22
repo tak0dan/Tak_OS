@@ -7,10 +7,10 @@
     enable = true;
     enableCompletion = true;
 
-    # Optional: only if you're using the system to *explicitly* point to your .zshrc (not necessary, but harmless)
+    # Optional: only if you want to source a specific user's .zshrc explicitly.
 #    interactiveShellInit = ''
-#      if [ -f "${config.users.users.tak_1.home}/.zshrc" ]; then
-#        source "${config.users.users.tak_1.home}/.zshrc"
+#      if [ -f "${config.users.users.<name>.home}/.zshrc" ]; then
+#        source "${config.users.users.<name>.home}/.zshrc"
 #      fi
 #    '';
   };

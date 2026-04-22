@@ -1,20 +1,10 @@
-# Tak_OS · users.nix — System user accounts
+# Tak_OS · users.nix — Declarative user hub
 # github.com/tak0dan/Tak_OS · GNU GPLv3
-# users.nix
-{ config, pkgs, ... }:
+# Loads installer-generated per-user declarations from users-declared/.
+{ lib, ... }:
 
 {
-  users.groups.tak_1 = {};
-
-  users.users.tak_1 = {
-    isNormalUser = true;
-    group = "tak_1";
-    shell = pkgs.zsh;
-    description = "Elder Evil";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      kdePackages.kate
-      pkgs.zsh
-    ];
-  };
+  imports = lib.optionals (builtins.pathExists ../users-declared/default.nix) [
+    ../users-declared/default.nix
+  ];
 }
