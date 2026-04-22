@@ -74,10 +74,11 @@ The primary rebuild helper. Wraps `nixos-rebuild switch` with a retry loop that:
 
 1. Captures the build log on failure.
 2. Detects `attribute 'X' missing` / `undefined variable 'X'` errors.
-3. Checks a well-known rename table (e.g. `python` → `python3`).
+3. Checks a well-known rename table (e.g. `python` → `python3`, `thunar` → `xfce.thunar`).
 4. Falls back to ranked search against the nixorcist package index.
-5. Offers an interactive replacement prompt.
-6. Retries up to 5 times.
+5. If the failure looks network-sensitive for optional apps (for example Discord on restricted networks), disables those optional packages and retries instead of killing the whole rebuild.
+6. Offers an interactive replacement prompt.
+7. Retries with the resolved state.
 
 ```bash
 sudo nixos-smart-rebuild

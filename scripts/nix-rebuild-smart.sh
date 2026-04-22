@@ -9,6 +9,7 @@ set -euo pipefail
 CONFIG_DIR="/etc/nixos"
 NIXORCIST_INDEX="${CONFIG_DIR}/nixorcist/cache/nixpkgs-index.txt"
 NIXORCIST_LOCK="${CONFIG_DIR}/nixorcist/generated/.lock"
+DISABLED_LIST="${CONFIG_DIR}/packages/disabled/disabled-packages.nix"
 TMP_LOG="$(mktemp)"
 
 # ─── File helpers ─────────────────────────────────────────────────────────────
@@ -71,6 +72,10 @@ _resolve_missing_attr() {
         [java]=jdk21        [openjdk]=jdk21
         [gcc]=gcc14         [clang]=clang_18
         [pip]=python3Packages.pip  [pip3]=python3Packages.pip
+        [thunar]=xfce.thunar
+        [thunar-archive-plugin]=xfce.thunar-archive-plugin
+        [thunar-volman]=xfce.thunar-volman
+        [thunar-vcs-plugin]=xfce.thunar-vcs-plugin
     )
 
     echo
@@ -165,6 +170,41 @@ _smart_replace_in_lock() {
     fi
 }
 
+_disable_package_globally() {
+    local pkg="$1"
+    [[ -f "$DISABLED_LIST" ]] || return 1
+    if grep -Eq "^[[:space:]]*\"${pkg}\"$" "$DISABLED_LIST"; then
+        return 0
+    fi
+    python3 - "$DISABLED_LIST" "$pkg" <<'PY'
+import sys
+path, pkg = sys.argv[1], sys.argv[2]
+text = open(path).read()
+needle = f'  "{pkg}"\n'
+if needle in text:
+    raise SystemExit(0)
+idx = text.rfind(']')
+if idx == -1:
+    raise SystemExit('disabled-packages.nix is malformed')
+text = text[:idx] + f'  "{pkg}"\n' + text[idx:]
+open(path, 'w').write(text)
+PY
+    echo "Disabled package globally: $pkg"
+}
+
+_handle_network_sensitive_failures() {
+    local log="$1"
+    local -a sensitive=(discord discord-canary discord-development discord-ptb simplex-chat)
+    local matched=0 pkg
+    for pkg in "${sensitive[@]}"; do
+        if grep -Eiq "(${pkg}|fetchurl|curl:|Could not resolve host|TLS|SSL|Connection timed out|Connection reset|Network is unreachable|HTTP error 403|HTTP error 429)" "$log"; then
+            _disable_package_globally "$pkg" || true
+            matched=1
+        fi
+    done
+    (( matched ))
+}
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 echo "Running nixos-rebuild switch --upgrade..."
@@ -172,6 +212,17 @@ echo "--------------------------------------------------"
 
 REBUILD_EXIT=0
 sudo nixos-rebuild switch --upgrade 2>&1 | tee "$TMP_LOG" || REBUILD_EXIT=$?
+
+if [[ "$REBUILD_EXIT" -ne 0 ]]; then
+    if _handle_network_sensitive_failures "$TMP_LOG"; then
+        echo
+        echo "Network-sensitive package failure detected; optional packages were disabled."
+        echo "Retrying rebuild once..."
+        : > "$TMP_LOG"
+        REBUILD_EXIT=0
+        sudo nixos-rebuild switch --upgrade 2>&1 | tee "$TMP_LOG" || REBUILD_EXIT=$?
+    fi
+fi
 
 # ── Evaluation warnings (moved packages) ──────────────────────────────────────
 echo

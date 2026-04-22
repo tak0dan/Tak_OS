@@ -60,6 +60,9 @@ Goals:
   right there in `configuration.nix`, same as a stock NixOS system.
 - **Gradually declarative** — the Nixorcist CLI layer lets you install packages
   imperatively and promote them to config whenever you are ready.
+- **User handling should be declarative** — the installer discovers existing
+  users and exports them into separate declarations instead of manually
+  creating users inside the install flow.
 
 ---
 
@@ -141,7 +144,7 @@ features = {
   kde            = true;              # Qt/KDE runtime libraries
   steam          = true;              # Steam + GameMode
   uwu            = true;              # NixOwOS branding overlay
-  virtualisation = true;              # Docker + VirtualBox host
+  virtualisation = false;             # Docker + VirtualBox host (off by default)
   nixorcist      = true;              # CLI package management layer
   openssh        = true;              # SSH daemon
   home-manager   = true;              # Declarative /home/ management
@@ -152,6 +155,9 @@ features = {
 
 Changing a flag and running `sudo nixos-smart-rebuild` is all it takes.
 No hunting through module files.
+
+The installer also exports discovered existing users into `/etc/nixos/users-declared/`
+and links them through a users hub instead of relying on manual user creation.
 
 #### Always-loaded modules
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Tak_OS · install.sh v3 — nmtui-style installer with per-user .nix generation
+# Tak_OS · install.sh v4 — declarative installer with discovered-user export
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # Phases:
 #   1  Channel upgrade
-#   2  TUI user setup — navigable menu (hostname · GPU · users · extra)
-#   3  Generate per-user .nix files + user-list.nix + patch imports + hostname + GPU
+#   2  TUI host / GPU review + discovered-user export preview
+#   3  Generate per-user .nix files + user-list.nix + users hub + patch imports + hostname + GPU
 #   4  Deploy PROJECT_DIR → /etc/nixos
 #   5  Adaptive build
 #   6  Switch
@@ -18,6 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TARGET_DIR="/etc/nixos"
 USERS_DIR="${TARGET_DIR}/users-declared"
+DISCOVER_USERS_SCRIPT="${PROJECT_DIR}/scripts/discover-users.sh"
 
 SCAN_PATHS=("$TARGET_DIR/configuration.nix" "$TARGET_DIR/modules" "$TARGET_DIR/packages")
 COMMENT_LOG="$TARGET_DIR/.auto-commented-packages.log"
@@ -44,7 +45,7 @@ _tui() { "$TUI" "$@" 3>&1 1>&2 2>&3; }
 
 tui_msg() {
   local title="$1" msg="$2"
-  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --msgbox "$msg" 14 72
+  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --msgbox "$msg" 18 90
   else printf "\n=== %s ===\n%s\n" "$title" "$msg" >&2
        read -rp "[Enter to continue] " _r < /dev/tty; fi
 }
@@ -56,7 +57,7 @@ tui_input() {
 }
 tui_yesno() {
   local title="$1" prompt="$2"
-  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --yesno "$prompt" 9 65; return $?
+  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --yesno "$prompt" 10 72; return $?
   else printf "\n=== %s ===\n%s\n" "$title" "$prompt" >&2
        read -rp "[y/N]: " _r < /dev/tty; [[ "${_r,,}" == "y" ]]; return $?; fi
 }
@@ -76,15 +77,12 @@ tui_radio() {
       _r="${_r:-$default}"
       if [[ "$_r" =~ ^[0-9]+$ ]] && (( _r >= 1 && _r < i )); then
         echo "${tags[$((_r-1))]}"; return; fi
-      local _first="${_r:0:1}" _t
-      for _t in "${tags[@]}"; do
-        [[ "${_t:0:1}" == "${_first,,}" ]] && { echo "$_t"; return; }; done
-      printf "  No match — number 1-%d or first letter.\n" "$(( i-1 ))" >&2
+      printf "  Invalid selection.\n" >&2
     done; fi
 }
 tui_menu() {
   local title="$1" prompt="$2"; shift 2
-  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --menu "$prompt" 20 72 12 "$@"
+  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --menu "$prompt" 20 78 12 "$@"
   else
     local i=1; local -a tags=() args=("$@")
     printf "\n=== %s ===\n%s\n" "$title" "$prompt" >&2
@@ -96,34 +94,34 @@ tui_menu() {
       read -rp "Select [1]: " _r < /dev/tty; _r="${_r:-1}"
       if [[ "$_r" =~ ^[0-9]+$ ]] && (( _r >= 1 && _r < i )); then
         echo "${tags[$((_r-1))]}"; return; fi
-      local _first="${_r:0:1}" _t
-      for _t in "${tags[@]}"; do
-        [[ "${_t:0:1}" == "${_first,,}" ]] && { echo "$_t"; return; }; done
-      printf "  Invalid — number 1-%d or first letter.\n" "$(( i-1 ))" >&2
+      printf "  Invalid selection.\n" >&2
     done; fi
-}
-tui_check() {
-  local title="$1" prompt="$2"; shift 2
-  if [[ "$TUI" != "plain" ]]; then _tui --title "$title" --checklist "$prompt" 20 72 10 "$@"
-  else
-    local -a sel=() args=("$@")
-    printf "\n=== %s ===\n%s\n" "$title" "$prompt" >&2
-    while [[ ${#args[@]} -gt 0 ]]; do
-      local tag="${args[0]}" desc="${args[1]}" on="${args[2]}"; args=("${args[@]:3}")
-      if [[ "$on" == "ON" ]]; then
-        read -rp "  Enable $tag ($desc)? [Y/n]: " _r < /dev/tty
-        [[ "${_r,,}" != "n" ]] && sel+=("\"$tag\"")
-      else
-        read -rp "  Enable $tag ($desc)? [y/N]: " _r < /dev/tty
-        [[ "${_r,,}" == "y" ]] && sel+=("\"$tag\"")
-      fi
-    done
-    [[ ${#sel[@]} -gt 0 ]] && printf '%s ' "${sel[@]}" || true; fi
 }
 
 REPO_VERSION="$(grep -oP 'stateVersion\s*=\s*"\K[^"]+' "${PROJECT_DIR}/configuration.nix" | head -1)"
 VIRT_FEATURE="false"
 grep -qP 'virtualisation\s*=\s*true' "${PROJECT_DIR}/configuration.nix" && VIRT_FEATURE="true" || true
+[[ -x "$DISCOVER_USERS_SCRIPT" ]] || chmod +x "$DISCOVER_USERS_SCRIPT" 2>/dev/null || true
+
+load_discovered_users() {
+  DISCOVERED_USERS=()
+  declare -gA DISC_DESC=() DISC_SHELL=() DISC_ADMIN=() DISC_NET=() DISC_VIRT=() DISC_AUDIO=() DISC_VIDEO=() DISC_INPUT=() DISC_PLUGDEV=()
+  while IFS=$'\t' read -r name desc shell is_admin net virt audio video input plugdev; do
+    [[ -n "${name:-}" ]] || continue
+    DISCOVERED_USERS+=("$name")
+    DISC_DESC["$name"]="$desc"
+    DISC_SHELL["$name"]="$shell"
+    DISC_ADMIN["$name"]="$is_admin"
+    DISC_NET["$name"]="$net"
+    DISC_VIRT["$name"]="$virt"
+    DISC_AUDIO["$name"]="$audio"
+    DISC_VIDEO["$name"]="$video"
+    DISC_INPUT["$name"]="$input"
+    DISC_PLUGDEV["$name"]="$plugdev"
+  done < <("$DISCOVER_USERS_SCRIPT")
+}
+
+load_discovered_users
 
 printf "\n${BOLD}${CYAN}"
 cat << 'BANNER'
@@ -133,8 +131,8 @@ cat << 'BANNER'
     ██║   ██╔══██║██╔═██╗       ██║   ██║╚════██║
     ██║   ██║  ██║██║  ██╗█████╗╚██████╔╝███████║
     ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═══╝ ╚═════╝ ╚══════╝
-           Installer v3 — nmtui-style setup
-            Declarative. Modular. Yours.
+      Installer v4 — declarative user discovery
+           Declarative. Modular. Yours.
 BANNER
 printf "${RESET}\n  NixOS version  : %s\n\n" "$REPO_VERSION"
 
@@ -148,26 +146,14 @@ nixos-rebuild build 2>/dev/null && ok "Baseline build OK." \
   || warn "Baseline build failed — continuing (expected on fresh systems)."
 ok "Phase 1 complete."
 
-step "Phase 2: User setup (TUI)"
-
+step "Phase 2: Install review (TUI)"
 INSTALL_HOST="$(hostname -s 2>/dev/null || hostname)"
 GPU_KERNEL="generic"; GPU_DRIVER="none"
-declare -a  ADMIN_USERS=(); declare -A  ADMIN_DESC=(); declare -A  ADMIN_SHELL_OVR=()
-ADMIN_SHELL="zsh"
-ADMIN_NET="true"; ADMIN_VIRT="true"; ADMIN_AUDIO="false"
-ADMIN_VIDEO="false"; ADMIN_INPUT="false"; ADMIN_PLUGDEV="false"
-declare -a  NORMAL_USERS=(); declare -A  NORMAL_DESC=(); declare -A  NORMAL_SHELL_OVR=()
-NORMAL_ENABLE="false"; NORMAL_SHELL="bash"
-NORMAL_NET="true"; NORMAL_VIRT="false"; NORMAL_AUDIO="false"
-NORMAL_VIDEO="false"; NORMAL_INPUT="false"; NORMAL_PLUGDEV="false"
 EXTRA_ENABLE="false"
 
 _lhost()  { echo "$INSTALL_HOST"; }
 _lgpu()   { echo "${GPU_KERNEL}/${GPU_DRIVER}"; }
-_ladm()   { [[ ${#ADMIN_USERS[@]} -eq 0 ]] && echo "(none)" || echo "${ADMIN_USERS[*]}"; }
-_lnorm()  { [[ "$NORMAL_ENABLE" == "false" ]] && echo "disabled" \
-              || { [[ ${#NORMAL_USERS[@]} -eq 0 ]] && echo "enabled/(none)" \
-                   || echo "${NORMAL_USERS[*]}"; }; }
+_lusers() { [[ ${#DISCOVERED_USERS[@]} -eq 0 ]] && echo "(none)" || echo "${DISCOVERED_USERS[*]}"; }
 _lextra() { echo "$EXTRA_ENABLE"; }
 
 scr_hostname() {
@@ -180,125 +166,27 @@ scr_hostname() {
 
 scr_gpu() {
   GPU_KERNEL="$(tui_radio "GPU — Kernel Profile" "Kernel parameter profile:" \
-    "generic"  "Safe default — any hardware (recommended)" \
-      "$([[ $GPU_KERNEL == generic  ]] && echo ON || echo OFF)" \
-    "thinkpad" "ThinkPad T480 — i915 GuC/HuC + Intel microcode" \
-      "$([[ $GPU_KERNEL == thinkpad ]] && echo ON || echo OFF)" \
-    "amd"      "AMD — amd_iommu + ppfeaturemask + AMD microcode" \
-      "$([[ $GPU_KERNEL == amd     ]] && echo ON || echo OFF)" \
-    "nvidia"   "Nvidia — DRM modesetting + nvidia initrd" \
-      "$([[ $GPU_KERNEL == nvidia  ]] && echo ON || echo OFF)")"
+    "generic"  "Safe default — any hardware (recommended)" "$([[ $GPU_KERNEL == generic  ]] && echo ON || echo OFF)" \
+    "thinkpad" "ThinkPad T480 — i915 GuC/HuC + Intel microcode" "$([[ $GPU_KERNEL == thinkpad ]] && echo ON || echo OFF)" \
+    "amd"      "AMD — amd_iommu + ppfeaturemask + AMD microcode" "$([[ $GPU_KERNEL == amd     ]] && echo ON || echo OFF)" \
+    "nvidia"   "Nvidia — DRM modesetting + nvidia initrd" "$([[ $GPU_KERNEL == nvidia  ]] && echo ON || echo OFF)")"
   GPU_DRIVER="$(tui_radio "GPU — Driver" "GPU driver to load:" \
-    "none"         "No driver (VM / headless / Intel built-in)" \
-      "$([[ $GPU_DRIVER == none         ]] && echo ON || echo OFF)" \
-    "intel"        "Intel integrated (intel-media-driver + VA-API)" \
-      "$([[ $GPU_DRIVER == intel        ]] && echo ON || echo OFF)" \
-    "amd"          "AMD (amdgpu + VA-API)" \
-      "$([[ $GPU_DRIVER == amd          ]] && echo ON || echo OFF)" \
-    "nvidia"       "Nvidia discrete" \
-      "$([[ $GPU_DRIVER == nvidia       ]] && echo ON || echo OFF)" \
-    "nvidia-prime" "Nvidia + Intel PRIME hybrid" \
-      "$([[ $GPU_DRIVER == nvidia-prime ]] && echo ON || echo OFF)")"
+    "none"         "No driver (VM / headless / Intel built-in)" "$([[ $GPU_DRIVER == none         ]] && echo ON || echo OFF)" \
+    "intel"        "Intel integrated" "$([[ $GPU_DRIVER == intel        ]] && echo ON || echo OFF)" \
+    "amd"          "AMD" "$([[ $GPU_DRIVER == amd          ]] && echo ON || echo OFF)" \
+    "nvidia"       "Nvidia discrete" "$([[ $GPU_DRIVER == nvidia       ]] && echo ON || echo OFF)" \
+    "nvidia-prime" "Nvidia + Intel PRIME hybrid" "$([[ $GPU_DRIVER == nvidia-prime ]] && echo ON || echo OFF)")"
 }
 
-scr_admins() {
-  tui_msg "Admin Users" "Admin users get 'wheel' + shared group toggles.
-At least one required.  Current: $(_ladm)"
-  if tui_yesno "Admin Users" "Clear current list and start fresh?"; then
-    ADMIN_USERS=(); ADMIN_DESC=(); ADMIN_SHELL_OVR=()
-  fi
-  while true; do
-    local _n; while true; do
-      _n="$(tui_input "Add Admin" "Username (a-z, 0-9, _, -):" "")"
-      [[ "$_n" =~ ^[a-z_][a-z0-9_-]*$ ]] && break
-      tui_msg "Error" "Invalid username '$_n'."
-    done
-    local _d; _d="$(tui_input "Add Admin" "Description for '$_n':" "$_n")"
-    ADMIN_USERS+=("$_n"); ADMIN_DESC["$_n"]="$_d"
-    tui_yesno "Admin Users" "Add another admin?" || break
+scr_users() {
+  load_discovered_users
+  local preview="" u role
+  for u in "${DISCOVERED_USERS[@]}"; do
+    role="user"
+    [[ "${DISC_ADMIN[$u]:-false}" == "true" ]] && role="admin"
+    preview+="- ${u} (${DISC_DESC[$u]:-$u}) :: shell=${DISC_SHELL[$u]:-bash} role=${role} net=${DISC_NET[$u]:-false} virt=${DISC_VIRT[$u]:-false} audio=${DISC_AUDIO[$u]:-false} video=${DISC_VIDEO[$u]:-false} input=${DISC_INPUT[$u]:-false} plugdev=${DISC_PLUGDEV[$u]:-false}"$'\n'
   done
-  ADMIN_SHELL="$(tui_radio "Admin Shell" "Default shell for all admins:" \
-    "zsh"  "Z Shell (recommended)" "$([[ $ADMIN_SHELL == zsh  ]] && echo ON || echo OFF)" \
-    "bash" "Bash"                  "$([[ $ADMIN_SHELL == bash ]] && echo ON || echo OFF)" \
-    "fish" "Fish Shell"            "$([[ $ADMIN_SHELL == fish ]] && echo ON || echo OFF)")"
-  if (( ${#ADMIN_USERS[@]} > 1 )); then
-    for _u in "${ADMIN_USERS[@]}"; do
-      local _s; _s="$(tui_radio "Shell: $_u" "Shell for '$_u' (tier: $ADMIN_SHELL):" \
-        "zsh"  "Z Shell" "$([[ $ADMIN_SHELL == zsh  ]] && echo ON || echo OFF)" \
-        "bash" "Bash"    "$([[ $ADMIN_SHELL == bash ]] && echo ON || echo OFF)" \
-        "fish" "Fish"    "$([[ $ADMIN_SHELL == fish ]] && echo ON || echo OFF)")"
-      [[ "$_s" != "$ADMIN_SHELL" ]] && ADMIN_SHELL_OVR["$_u"]="$_s" \
-        || unset 'ADMIN_SHELL_OVR[$_u]'
-    done
-  fi
-  local _ag; _ag="$(tui_check "Admin Groups" "Groups for all admins:" \
-    "networking"     "networkmanager (WiFi/VPN)" \
-      "$([[ $ADMIN_NET    == true ]] && echo ON || echo OFF)" \
-    "virtualisation" "vboxusers + docker" \
-      "$([[ $ADMIN_VIRT   == true ]] && echo ON || echo OFF)" \
-    "audio"   "audio"   "$([[ $ADMIN_AUDIO   == true ]] && echo ON || echo OFF)" \
-    "video"   "video"   "$([[ $ADMIN_VIDEO   == true ]] && echo ON || echo OFF)" \
-    "input"   "input"   "$([[ $ADMIN_INPUT   == true ]] && echo ON || echo OFF)" \
-    "plugdev" "plugdev (USB)" "$([[ $ADMIN_PLUGDEV == true ]] && echo ON || echo OFF)")"
-  ADMIN_NET="false"; ADMIN_VIRT="false"; ADMIN_AUDIO="false"
-  ADMIN_VIDEO="false"; ADMIN_INPUT="false"; ADMIN_PLUGDEV="false"
-  [[ "$_ag" == *'"networking"'*     ]] && ADMIN_NET="true"
-  [[ "$_ag" == *'"virtualisation"'* ]] && ADMIN_VIRT="true"
-  [[ "$_ag" == *'"audio"'*          ]] && ADMIN_AUDIO="true"
-  [[ "$_ag" == *'"video"'*          ]] && ADMIN_VIDEO="true"
-  [[ "$_ag" == *'"input"'*          ]] && ADMIN_INPUT="true"
-  [[ "$_ag" == *'"plugdev"'*        ]] && ADMIN_PLUGDEV="true"
-}
-
-scr_normal() {
-  if tui_yesno "Normal Users" \
-    "Enable normal-user tier (no wheel)?  Current: $(_lnorm)"; then
-    NORMAL_ENABLE="true"
-    if tui_yesno "Normal Users" "Clear current list and start fresh?"; then
-      NORMAL_USERS=(); NORMAL_DESC=(); NORMAL_SHELL_OVR=()
-    fi
-    while true; do
-      local _n; while true; do
-        _n="$(tui_input "Add Normal User" "Username (a-z, 0-9, _, -):" "")"
-        [[ "$_n" =~ ^[a-z_][a-z0-9_-]*$ ]] && break
-        tui_msg "Error" "Invalid username '$_n'."
-      done
-      local _d; _d="$(tui_input "Add Normal User" "Description for '$_n':" "$_n")"
-      NORMAL_USERS+=("$_n"); NORMAL_DESC["$_n"]="$_d"
-      tui_yesno "Normal Users" "Add another?" || break
-    done
-    NORMAL_SHELL="$(tui_radio "Normal Shell" "Default shell for all normal users:" \
-      "bash" "Bash (recommended)" "$([[ $NORMAL_SHELL == bash ]] && echo ON || echo OFF)" \
-      "zsh"  "Z Shell"            "$([[ $NORMAL_SHELL == zsh  ]] && echo ON || echo OFF)" \
-      "fish" "Fish"               "$([[ $NORMAL_SHELL == fish ]] && echo ON || echo OFF)")"
-    if (( ${#NORMAL_USERS[@]} > 1 )); then
-      for _u in "${NORMAL_USERS[@]}"; do
-        local _s; _s="$(tui_radio "Shell: $_u" "Shell for '$_u' (tier: $NORMAL_SHELL):" \
-          "bash" "Bash" "$([[ $NORMAL_SHELL == bash ]] && echo ON || echo OFF)" \
-          "zsh"  "Z Shell" "$([[ $NORMAL_SHELL == zsh ]] && echo ON || echo OFF)" \
-          "fish" "Fish"    "$([[ $NORMAL_SHELL == fish ]] && echo ON || echo OFF)")"
-        [[ "$_s" != "$NORMAL_SHELL" ]] && NORMAL_SHELL_OVR["$_u"]="$_s" \
-          || unset 'NORMAL_SHELL_OVR[$_u]'
-      done
-    fi
-    local _ng; _ng="$(tui_check "Normal Groups" "Groups for all normal users:" \
-      "networking"     "networkmanager" "$([[ $NORMAL_NET    == true ]] && echo ON || echo OFF)" \
-      "virtualisation" "vboxusers+docker" "$([[ $NORMAL_VIRT  == true ]] && echo ON || echo OFF)" \
-      "audio"   "audio"   "$([[ $NORMAL_AUDIO   == true ]] && echo ON || echo OFF)" \
-      "video"   "video"   "$([[ $NORMAL_VIDEO   == true ]] && echo ON || echo OFF)" \
-      "input"   "input"   "$([[ $NORMAL_INPUT   == true ]] && echo ON || echo OFF)" \
-      "plugdev" "plugdev" "$([[ $NORMAL_PLUGDEV == true ]] && echo ON || echo OFF)")"
-    NORMAL_NET="false"; NORMAL_VIRT="false"; NORMAL_AUDIO="false"
-    NORMAL_VIDEO="false"; NORMAL_INPUT="false"; NORMAL_PLUGDEV="false"
-    [[ "$_ng" == *'"networking"'*     ]] && NORMAL_NET="true"
-    [[ "$_ng" == *'"virtualisation"'* ]] && NORMAL_VIRT="true"
-    [[ "$_ng" == *'"audio"'*          ]] && NORMAL_AUDIO="true"
-    [[ "$_ng" == *'"video"'*          ]] && NORMAL_VIDEO="true"
-    [[ "$_ng" == *'"input"'*          ]] && NORMAL_INPUT="true"
-    [[ "$_ng" == *'"plugdev"'*        ]] && NORMAL_PLUGDEV="true"
-  else
-    NORMAL_ENABLE="false"; NORMAL_USERS=()
-  fi
+  tui_msg "Discovered Users" "Tak_OS now uses discovered existing users instead of manual user creation.\n\nCurrent discovered users:\n${preview}"
 }
 
 scr_extra() {
@@ -313,47 +201,41 @@ Current: $(_lextra)"; then
 }
 
 scr_review() {
-  local _adm="${ADMIN_USERS[*]:-—}"
-  local _nor; [[ "$NORMAL_ENABLE" == "false" ]] && _nor="disabled" \
-    || _nor="${NORMAL_USERS[*]:-—}"
+  local _users="${DISCOVERED_USERS[*]:-—}"
   tui_msg "Review" \
-"Hostname     : ${INSTALL_HOST}
-GPU          : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
-NixOS        : ${REPO_VERSION}
+"Hostname       : ${INSTALL_HOST}
 
-Admin users  : ${_adm}
-Admin shell  : ${ADMIN_SHELL}
-Admin groups : net=${ADMIN_NET} virt=${ADMIN_VIRT} audio=${ADMIN_AUDIO} video=${ADMIN_VIDEO} input=${ADMIN_INPUT} plugdev=${ADMIN_PLUGDEV}
+GPU            : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
+NixOS          : ${REPO_VERSION}
+Virtualisation : ${VIRT_FEATURE}
 
-Normal users : ${_nor}
-Normal shell : ${NORMAL_SHELL}
-Normal groups: net=${NORMAL_NET} virt=${NORMAL_VIRT} audio=${NORMAL_AUDIO} video=${NORMAL_VIDEO} input=${NORMAL_INPUT} plugdev=${NORMAL_PLUGDEV}
+Discovered users: ${_users}
+Extra nix      : ${EXTRA_ENABLE}
 
-Extra nix    : ${EXTRA_ENABLE}"
+Manual user creation has been removed from the installer.
+Existing users will be exported into separate declarations and linked through the users hub."
 }
 
 _APPLIED="false"
 while true; do
-  _choice="$(tui_menu "Tak_OS Installer v3" \
-    "Navigate freely. Select 'Apply' when ready." \
-    "hostname" "Hostname        [$(_lhost)]"   \
-    "gpu"      "GPU / Kernel    [$(_lgpu)]"    \
-    "admins"   "Admin Users     [$(_ladm)]"    \
-    "normal"   "Normal Users    [$(_lnorm)]"   \
-    "extra"    "Extra users.nix [$(_lextra)]"  \
+  _choice="$(tui_menu "Tak_OS Installer v4" \
+    "Review detected system state. Select 'Apply' when ready." \
+    "hostname" "Hostname         [$(_lhost)]"   \
+    "gpu"      "GPU / Kernel     [$(_lgpu)]"    \
+    "users"    "Detected Users   [$(_lusers)]"  \
+    "extra"    "Extra users.nix  [$(_lextra)]"  \
     "review"   "Review summary"                 \
     "apply"    "Apply & Install"                \
     "quit"     "Quit / Abort")"
   case "$_choice" in
     hostname) scr_hostname ;;
     gpu)      scr_gpu ;;
-    admins)   scr_admins ;;
-    normal)   scr_normal ;;
+    users)    scr_users ;;
     extra)    scr_extra ;;
     review)   scr_review ;;
     apply)
-      [[ ${#ADMIN_USERS[@]} -eq 0 ]] && {
-        tui_msg "Error" "Configure at least one admin user first."; continue; }
+      [[ ${#DISCOVERED_USERS[@]} -eq 0 ]] && {
+        tui_msg "Error" "No existing users were discovered. Create a real user first or fix discovery logic."; continue; }
       scr_review
       tui_yesno "Confirm" "Proceed with installation?" || continue
       _APPLIED="true"; break ;;
@@ -372,7 +254,7 @@ build_groups() {
   [[ "$net"      == "true" ]] && g+=("\"networkmanager\"")
   if [[ "$virt" == "true" ]]; then
     if [[ "$VIRT_FEATURE" == "true" ]]; then g+=("\"vboxusers\"" "\"docker\"")
-    else warn "virtualisation=true but features.virtualisation=false — skipping vboxusers/docker"; fi
+    else warn "User wants virtualisation groups but features.virtualisation=false — skipping vboxusers/docker"; fi
   fi
   [[ "$audio"   == "true" ]] && g+=("\"audio\"")
   [[ "$video"   == "true" ]] && g+=("\"video\"")
@@ -394,10 +276,6 @@ write_user_file() {
 # ===========================================================
 #  Tak_OS — system user: ${name}
 #  Generated by the Tak_OS installer. Safe to edit.
-#  Re-run: sudo /etc/nixos/scripts/install.sh  to regenerate.
-#  Then:   sudo nixos-rebuild switch
-#
-#  Add per-user packages to the packages list below.
 # ===========================================================
 { pkgs, lib, ... }:
 {
@@ -415,32 +293,24 @@ NIX
   info "Wrote ${USERS_DIR}/${name}.nix"
 }
 
-for u in "${ADMIN_USERS[@]}"; do
-  _sh="${ADMIN_SHELL_OVR[$u]:-$ADMIN_SHELL}"
-  write_user_file "$u" "${ADMIN_DESC[$u]:-$u}" "$_sh" "true" \
-    "$ADMIN_NET" "$ADMIN_VIRT" "$ADMIN_AUDIO" "$ADMIN_VIDEO" "$ADMIN_INPUT" "$ADMIN_PLUGDEV"
+for u in "${DISCOVERED_USERS[@]}"; do
+  write_user_file "$u" \
+    "${DISC_DESC[$u]:-$u}" \
+    "${DISC_SHELL[$u]:-bash}" \
+    "${DISC_ADMIN[$u]:-false}" \
+    "${DISC_NET[$u]:-true}" \
+    "${DISC_VIRT[$u]:-false}" \
+    "${DISC_AUDIO[$u]:-false}" \
+    "${DISC_VIDEO[$u]:-false}" \
+    "${DISC_INPUT[$u]:-false}" \
+    "${DISC_PLUGDEV[$u]:-false}"
 done
-
-if [[ "$NORMAL_ENABLE" == "true" ]]; then
-  for u in "${NORMAL_USERS[@]}"; do
-    _sh="${NORMAL_SHELL_OVR[$u]:-$NORMAL_SHELL}"
-    write_user_file "$u" "${NORMAL_DESC[$u]:-$u}" "$_sh" "false" \
-      "$NORMAL_NET" "$NORMAL_VIRT" "$NORMAL_AUDIO" "$NORMAL_VIDEO" "$NORMAL_INPUT" "$NORMAL_PLUGDEV"
-  done
-fi
 
 if [[ "$EXTRA_ENABLE" == "true" ]]; then
   _extra="${USERS_DIR}/extra-users.nix"
   [[ ! -f "$_extra" ]] || [[ ! -s "$_extra" ]] && cat > "$_extra" << 'NIX'
 # ===========================================================
 #  Tak_OS — extra (fully manual) user declarations
-#  Auto-created — safe to edit. Loaded when present in imports.
-#
-#  Example:
-#    users.users.guest = {
-#      isNormalUser = true; description = "Guest";
-#      shell = pkgs.bash; extraGroups = []; packages = [];
-#    };
 # ===========================================================
 { pkgs, lib, ... }:
 {
@@ -452,36 +322,42 @@ fi
 
 {
   printf '# Generated by Tak_OS installer\n[ '
-  for u in "${ADMIN_USERS[@]}"; do printf '"%s" ' "$u"; done
-  [[ "$NORMAL_ENABLE" == "true" ]] && \
-    for u in "${NORMAL_USERS[@]}"; do printf '"%s" ' "$u"; done
+  for u in "${DISCOVERED_USERS[@]}"; do printf '"%s" ' "$u"; done
   printf ']\n'
 } > "${USERS_DIR}/user-list.nix"
 info "Wrote ${USERS_DIR}/user-list.nix"
 
-_import_lines=""
-for u in "${ADMIN_USERS[@]}"; do _import_lines+="     ./users-declared/${u}.nix"$'\n'; done
-[[ "$NORMAL_ENABLE" == "true" ]] && \
-  for u in "${NORMAL_USERS[@]}"; do _import_lines+="     ./users-declared/${u}.nix"$'\n'; done
-[[ "$EXTRA_ENABLE"  == "true" ]] && \
-  _import_lines+="     ./users-declared/extra-users.nix"$'\n'
+cat > "${USERS_DIR}/default.nix" << 'NIX'
+# Generated by Tak_OS installer — users hub
+{ ... }:
+{
+  imports = [
+    ./user-modules.nix
+  ];
+}
+NIX
 
-python3 - "${PROJECT_DIR}/configuration.nix" "$_import_lines" << 'PYEOF'
+{
+  printf '# Generated by Tak_OS installer — aggregated imports\n{ ... }:\n{\n  imports = [\n'
+  for u in "${DISCOVERED_USERS[@]}"; do printf '    ./%s.nix\n' "$u"; done
+  [[ "$EXTRA_ENABLE" == "true" ]] && printf '    ./extra-users.nix\n'
+  printf '  ];\n}\n'
+} > "${USERS_DIR}/user-modules.nix"
+info "Wrote ${USERS_DIR}/default.nix and ${USERS_DIR}/user-modules.nix"
+
+python3 - "${PROJECT_DIR}/configuration.nix" << 'PYEOF'
 import sys
-START = '# __NIXOS_USERS_IMPORTS_START__'
-END   = '# __NIXOS_USERS_IMPORTS_END__'
-cfg   = sys.argv[1]
-lines = sys.argv[2]
+cfg = sys.argv[1]
+start = '# __NIXOS_USERS_IMPORTS_START__'
+end = '# __NIXOS_USERS_IMPORTS_END__'
 content = open(cfg).read()
-si = content.find(START); ei = content.find(END)
-if si == -1: sys.exit(f'ERROR: {START!r} not found')
-if ei == -1: sys.exit(f'ERROR: {END!r} not found')
-if si >= ei: sys.exit('ERROR: START after END')
+si = content.find(start); ei = content.find(end)
+if si == -1 or ei == -1 or si >= ei:
+    raise SystemExit('ERROR: user import markers not found or invalid')
 ls = content.rfind('\n', 0, si) + 1
 le = content.find('\n', ei); le = len(content) if le == -1 else le + 1
-nb = f'     {START}\n{lines}     {END}\n'
-open(cfg, 'w').write(content[:ls] + nb + content[le:])
-print(f'  Imports block patched ({le-ls} -> {len(nb)} chars)')
+block = '     ' + start + '\n' + '     ./users-declared/default.nix\n' + '     ' + end + '\n'
+open(cfg, 'w').write(content[:ls] + block + content[le:])
 PYEOF
 
 sed -i "s/networking\.hostName = \"[^\"]*\"/networking.hostName = \"${INSTALL_HOST}\"/" \
@@ -495,11 +371,9 @@ ok "Configuration generated."
 
 step "Phase 4: Deploying to ${TARGET_DIR}"
 _tmpdir="$(mktemp -d)"; trap 'rm -rf "$_tmpdir"' EXIT
-[[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && \
-  cp "${TARGET_DIR}/hardware-configuration.nix" "$_tmpdir/"
+[[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && cp "${TARGET_DIR}/hardware-configuration.nix" "$_tmpdir/"
 rsync -a --delete "${PROJECT_DIR}/" "${TARGET_DIR}/"
-[[ -f "$_tmpdir/hardware-configuration.nix" ]] && \
-  cp "$_tmpdir/hardware-configuration.nix" "${TARGET_DIR}/"
+[[ -f "$_tmpdir/hardware-configuration.nix" ]] && cp "$_tmpdir/hardware-configuration.nix" "${TARGET_DIR}/"
 mkdir -p "${TARGET_DIR}/users-declared"
 cp "${USERS_DIR}"/*.nix "${TARGET_DIR}/users-declared/" 2>/dev/null || true
 ok "Deployment complete."
@@ -516,10 +390,9 @@ auto_fix() {
     if [[ -z "$var" ]]; then
       warn "Unhandled error. Check $LOG."
       [[ "$FALLBACK_MODE" == "true" ]] && {
-        local fa="${ADMIN_USERS[0]:-tak_1}"
+        local fa="${DISCOVERED_USERS[0]:-tak_1}"
         warn "Fallback: sed-replacing 'tak_1' → '$fa'..."
-        grep -rl "tak_1" "${TARGET_DIR}/configuration.nix" "${TARGET_DIR}/modules/" \
-          --include="*.nix" 2>/dev/null \
+        grep -rl "tak_1" "${TARGET_DIR}/configuration.nix" "${TARGET_DIR}/modules/" --include="*.nix" 2>/dev/null \
           | while read -r f; do sed -i "s/\btak_1\b/${fa}/g" "$f"; warn "  patched: $f"; done
         nixos-rebuild build 2>&1 | tail -3; return 0
       }
@@ -561,6 +434,7 @@ chmod +x "$RESTORE"
 
 printf "\n${GREEN}${BOLD}  Tak_OS installation complete.${RESET}\n\n"
 printf "  Per-user files : ${USERS_DIR}/<name>.nix\n"
+printf "  Users hub      : ${USERS_DIR}/default.nix\n"
 printf "  Home Manager   : ~/.hm-local/home.nix  (per user)\n"
 printf "  GPU            : kernelParams=%s  driver=%s\n" "$GPU_KERNEL" "$GPU_DRIVER"
 [[ -s "$COMMENT_LOG" ]] && printf "  Restore pkgs   : sudo %s\n" "$RESTORE"
