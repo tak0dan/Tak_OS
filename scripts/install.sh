@@ -99,9 +99,53 @@ tui_menu() {
 }
 
 REPO_VERSION="$(grep -oP 'stateVersion\s*=\s*"\K[^"]+' "${PROJECT_DIR}/configuration.nix" | head -1)"
-VIRT_FEATURE="false"
-grep -qP 'virtualisation\s*=\s*true' "${PROJECT_DIR}/configuration.nix" && VIRT_FEATURE="true" || true
 [[ -x "$DISCOVER_USERS_SCRIPT" ]] || chmod +x "$DISCOVER_USERS_SCRIPT" 2>/dev/null || true
+
+FEATURE_DEFAULTS=(
+  "KDE=true"
+  "STEAM=false"
+  "VIRTUALISATION=false"
+  "NIXORCIST=false"
+  "COPILOT=false"
+  "GAMEON_STREAMING=false"
+)
+
+feature_value() {
+  local key="$1" kv
+  for kv in "${FEATURE_DEFAULTS[@]}"; do
+    [[ "${kv%%=*}" == "$key" ]] && { echo "${kv#*=}"; return 0; }
+  done
+  return 1
+}
+
+apply_feature_markers() {
+  local cfg="$1"
+  python3 - "$cfg" <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+replacements = {
+    'KDE': 'kde = true;',
+    'STEAM': 'steam = false;',
+    'VIRTUALISATION': 'virtualisation = false;',
+    'NIXORCIST': 'nixorcist = false;',
+    'COPILOT': 'copilot = false;',
+    'GAMEON_STREAMING': 'streaming = false;'
+}
+for key, decl in replacements.items():
+    start = f'# __TAKOS_FEATURE_{key}_START__'
+    end = f'# __TAKOS_FEATURE_{key}_END__'
+    pattern = re.compile(re.escape(start) + r'\n.*?\n\s*' + re.escape(end), re.S)
+    repl = f'{start}\n    {decl}\n    {end}' if key not in ('GAMEON_STREAMING',) else f'{start}\n        {decl}\n        {end}'
+    text, n = pattern.subn(repl, text, count=1)
+    if n != 1:
+        raise SystemExit(f'Missing or invalid marker block for {key}')
+open(path, 'w').write(text)
+PY
+}
+
+apply_feature_markers "${PROJECT_DIR}/configuration.nix"
+VIRT_FEATURE="$(feature_value VIRTUALISATION)"
 
 load_discovered_users() {
   DISCOVERED_USERS=()
@@ -360,13 +404,16 @@ block = '     ' + start + '\n' + '     ./users-declared/default.nix\n' + '     '
 open(cfg, 'w').write(content[:ls] + block + content[le:])
 PYEOF
 
+apply_feature_markers "${PROJECT_DIR}/configuration.nix"
 sed -i "s/networking\.hostName = \"[^\"]*\"/networking.hostName = \"${INSTALL_HOST}\"/" \
   "${PROJECT_DIR}/modules/networking.nix"
 sed -i "s/kernelParams\s*=\s*\"[^\"]*\"/kernelParams = \"${GPU_KERNEL}\"/" \
   "${PROJECT_DIR}/configuration.nix"
 sed -i "s/^\(\s*gpu\s*=\s*\)\"[^\"]*\"/\1\"${GPU_DRIVER}\"/" \
   "${PROJECT_DIR}/configuration.nix"
+VIRT_FEATURE="$(feature_value VIRTUALISATION)"
 info "Hostname=${INSTALL_HOST}  GPU=${GPU_KERNEL}/${GPU_DRIVER}"
+info "Feature defaults applied via marker blocks (heavy modules disabled by default)."
 ok "Configuration generated."
 
 step "Phase 4: Deploying to ${TARGET_DIR}"

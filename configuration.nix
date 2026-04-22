@@ -312,7 +312,9 @@ let
     # ⚠️  polkit-kde-agent is hardwired to hyprland-session.target.
     #     If hyprland = false, polkit popups will not auto-start.
     #
+    # __TAKOS_FEATURE_KDE_START__
     kde = true;
+    # __TAKOS_FEATURE_KDE_END__
 
 
     # =========================================================================
@@ -346,7 +348,9 @@ let
       # ── Visual & Performance ────────────────────────────────────────────
       graphics = {
         overlays  = true;   # MangoHud / GOverlay / vkBasalt + compat symlinks
-        streaming = true;   # Full GStreamer codec pack + noisetorch  ⚠️ HEAVY
+        # __TAKOS_FEATURE_GAMEON_STREAMING_START__
+        streaming = false;  # Full GStreamer codec pack + noisetorch  ⚠️ HEAVY
+        # __TAKOS_FEATURE_GAMEON_STREAMING_END__
       };
 
       # ── Hardware / Input ────────────────────────────────────────────────
@@ -378,7 +382,9 @@ let
     # → modules/gaming.nix
     # → packages/games.nix  (user packages: Lutris, Heroic, MangoHud, etc.)
     #
-    steam = true;
+    # __TAKOS_FEATURE_STEAM_START__
+    steam = false;
+    # __TAKOS_FEATURE_STEAM_END__
 
 
     # =========================================================================
@@ -396,7 +402,9 @@ let
     # Disabled by default: it is heavy, slow to build, and should be opted into
     # explicitly instead of enabled by default during installation.
     #
+    # __TAKOS_FEATURE_VIRTUALISATION_START__
     virtualisation = false;
+    # __TAKOS_FEATURE_VIRTUALISATION_END__
 
     # =========================================================================
     # 🤖 NIXORCIST   (Work in progress)
@@ -406,7 +414,9 @@ let
     # → nixorcist/generated/all-packages.nix
     # → modules/system-packages.nix  (nixorcist CLI wrapper)
     #
+    # __TAKOS_FEATURE_NIXORCIST_START__
     nixorcist = false;
+    # __TAKOS_FEATURE_NIXORCIST_END__
 
     # =========================================================================
     # 🏠 HOME-MANAGER
@@ -451,7 +461,9 @@ let
     #     Installation is guarded by a sentinel file and only runs once.
     #     To re-install, remove: /var/lib/copilot-cli/.installed
     #
-    copilot = true;
+    # __TAKOS_FEATURE_COPILOT_START__
+    copilot = false;
+    # __TAKOS_FEATURE_COPILOT_END__
 
   };
 
