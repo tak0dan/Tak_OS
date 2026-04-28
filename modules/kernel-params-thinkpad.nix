@@ -28,16 +28,18 @@ in
     # i915: enable GuC/HuC firmware, faster display init, framebuffer compression
     boot.kernelParams = [
       "i915.enable_guc=3"
-      "i915.fastboot=1"
       "i915.enable_fbc=1"
     ];
 
     hardware.cpu.intel.updateMicrocode = true;
 
     # power-profiles-daemon manages CPU power profile.
-    # GameMode also controls the CPU governor — they conflict when both active.
-    # mkDefault lets programs.gamemode.enable = true override this to false.
-    services.power-profiles-daemon.enable = lib.mkDefault (!config.programs.gamemode.enable);
+    # GameMode also controls the CPU governor — force power-profiles-daemon off
+    # when GameMode is enabled, otherwise leave Plasma's default behavior intact.
+    services.power-profiles-daemon.enable =
+      if config.programs.gamemode.enable
+      then lib.mkForce false
+      else lib.mkDefault true;
     services.tlp.enable = false; # avoid conflict with power-profiles-daemon
 
     hardware.enableRedistributableFirmware = true;

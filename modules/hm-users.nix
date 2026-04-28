@@ -3,8 +3,9 @@
 #
 # HM-USERS.NIX — Home Manager user profile declarations
 # ======================================================
-# Loaded when features.home-manager = true (set in configuration.nix).
-# Requires <home-manager/nixos> to be imported first (handled in configuration.nix).
+# Loaded when features.home-manager = true.
+# Requires <home-manager/nixos> to be imported first (handled by
+# modules/home-manager-layer.nix).
 #
 # Generates one home-manager profile per entry in features.home-manager-users.
 # To add a user: append their name to that list — everything else is derived.
@@ -12,9 +13,11 @@
 # Each profile:
 #   • Sets home.username / home.homeDirectory from the name alone.
 #   • Sets home.stateVersion to match system.stateVersion — safe to override in home.nix.
-#   • Imports /home/<user>/.hm-local/home.nix    (preferred)
-#          or /home/<user>/.hm-local/default.nix  (fallback)
-#   • Falls back to a baseline (just git) when neither file exists.
+#   • Imports /etc/nixos/.hm-local-cache/<user>.nix when available.
+#     The cache is refreshed from /home/<user>/.hm-local/{home,default}.nix
+#     during activation, so evaluation never depends on traversing private
+#     home directories belonging to other users.
+#   • Falls back to a baseline (just git) when no cached file exists yet.
 #   • home-manager only manages what home.nix explicitly declares;
 #     existing files are never touched unless listed there.
 #
@@ -25,18 +28,14 @@
 {
   home-manager.users = lib.genAttrs features.home-manager-users (user:
     let
-      local  = "/home/${user}/.hm-local";
-      hmFile =
-        if builtins.pathExists (local + "/home.nix")    then local + "/home.nix"
-        else if builtins.pathExists (local + "/default.nix") then local + "/default.nix"
-        else null;
+      hmFile = "/etc/nixos/.hm-local-cache/${user}.nix";
     in
     {
       home.username                  = user;
       home.homeDirectory             = "/home/${user}";
       home.stateVersion              = lib.mkDefault config.system.stateVersion;
       home.enableNixpkgsReleaseCheck = false;
-      imports                        = lib.optionals (hmFile != null) [ hmFile ];
+      imports                        = lib.optionals (builtins.pathExists hmFile) [ hmFile ];
       home.packages                  = [ pkgs.git ]; # baseline — always present
     });
 }

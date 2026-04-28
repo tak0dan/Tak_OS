@@ -135,29 +135,51 @@ Tak_OS separates concerns into three distinct ownership layers:
 
 ### Feature Flags
 
-`configuration.nix` opens with a `let features = { ... };` block. Every
-major system component is controlled from there:
+`configuration.nix` now opens with two layers:
+
+1. a **high-level graph** for simple capability declarations,
+2. the canonical **`features.*` attrset** consumed by the module graph.
+
+That keeps the user-facing declaration simpler without changing the internal
+architecture contract used by modules:
 
 ```nix
+graph = {
+  services = {
+    steam = true;
+    flatpak = true;
+    openssh = true;
+  };
+  desktop = {
+    hyprland = true;
+    kde = true;
+    uwu = true;
+  };
+  platform = {
+    kernelProfile = "thinkpad";
+    gpuProfile = "none";
+  };
+};
+
 features = {
-  hyprland       = true;              # Wayland compositor + full desktop stack
-  kernelParams   = "thinkpad";        # Boot-time hardware tuning profile
-  gpu            = "none";            # GPU driver: "amd" | "intel" | "nvidia" | "nvidia-prime" | "none"
-  kde            = true;              # Qt/KDE runtime libraries
-  steam          = true;              # Steam + GameMode
-  uwu            = true;              # NixOwOS branding overlay
-  virtualisation = false;             # Docker + VirtualBox host (off by default)
-  flatpak        = true;              # Flatpak runtime + Flathub support
-  nixorcist      = true;              # CLI package management layer
-  openssh        = true;              # SSH daemon
-  home-manager   = true;              # Declarative /home/ management
+  hyprland       = graph.desktop.hyprland;
+  kernelParams   = graph.platform.kernelProfile;
+  gpu            = graph.platform.gpuProfile;
+  kde            = graph.desktop.kde;
+  steam          = graph.services.steam;
+  uwu            = graph.desktop.uwu;
+  virtualisation = graph.services.virtualisation;
+  flatpak        = graph.services.flatpak;
+  nixorcist      = graph.services.nixorcist;
+  openssh        = graph.services.openssh;
+  home-manager   = graph.services.homeManager;
   home-manager-users = let f = ./users-declared/user-list.nix; in if builtins.pathExists f then import f else [];
-  copilot        = true;              # GitHub Copilot CLI
+  copilot        = graph.services.copilot;
 };
 ```
 
-Changing a flag and running `sudo nixos-smart-rebuild` is all it takes.
-No hunting through module files.
+For day-to-day use, you edit the graph or a feature value in one place and run
+`sudo nixos-smart-rebuild`. No hunting through module files.
 
 The installer stages a temporary copy of the repo, rewrites repo-specific user
 data from the current machine there, and exports discovered existing users into
@@ -168,42 +190,31 @@ That means you can keep your personal usernames and machine-specific defaults in
 the repo while still installing onto another machine without cleaning the tree
 before every commit.
 
-#### Always-loaded modules
+#### Always-loaded import hubs
 
 These are imported unconditionally, regardless of any feature flag:
 
 | Module | Purpose |
 |--------|---------|
 | `hardware-configuration.nix` | Machine hardware |
-| `modules/bootloader.nix` | GRUB / systemd-boot |
-| `modules/gpu.nix` | GPU profile dispatcher |
-| `modules/sddm.nix` | Display manager |
-| `modules/locale.nix` | Timezone, locale, keyboard |
-| `modules/networking.nix` | NetworkManager, hostname |
-| `modules/users.nix` | Declarative user hub importing `users-declared/` |
-| `modules/audio.nix` | PipeWire |
-| `modules/hardware-graphics.nix` | Mesa / VA-API |
-| `modules/keyring.nix` | GNOME Keyring |
-| `modules/environment.nix` | Session env vars |
-| `modules/zsh.nix` | Zsh shell |
-| `modules/nix-settings.nix` | Nix daemon + nixpkgs config |
-| `modules/fonts-base.nix` | Minimal font set |
-| `modules/system-packages.nix` | Package assembly hub |
-| `modules/hm-local-bootstrap.nix` | `~/.hm-local` scaffold |
-| `modules/copilot-cli.nix` | Copilot CLI (guarded internally) |
+| `modules/manifest-wiring.nix` | Wires `features.*` into `_module.args`, GPU/profile selection, and explicit SDDM ownership |
+| `modules/foundation.nix` | Always-loaded boot, core system, shell, package, and scaffold baseline |
+| `modules/feature-layer.nix` | Always-imported modules that internally guard themselves with `features.*` |
 
-#### Conditionally loaded modules
+#### Conditionally loaded import hubs
 
 | Condition | Modules loaded |
 |-----------|---------------|
-| `features.hyprland = true` | `window-managers`, `portals`, `quickshell`, `fonts`, `theme`, `overlays`, `nh`, `vm-guest-services`, `local-hardware-clock` |
-| `features.home-manager = true` | `<home-manager/nixos>`, `hm-users` |
-| `features.uwu = true` | `uwu/nixowos.nix` |
-| `features.virtualisation = true` | `virtualbox.nix` (+ Docker) |
-| `features.flatpak = true` | `flatpak.nix` (Flatpak runtime + Flathub) |
-| `features.kde = true` | activates Qt/KDE inside `kde.nix` |
-| `features.steam = true` | activates Steam inside `gaming.nix` |
-| `features.openssh = true` | activates SSH inside `openssh.nix` |
+| `features.home-manager = true` | `modules/home-manager-layer.nix` → `<home-manager/nixos>`, `hm-users` |
+| `features.hyprland = true` | `modules/hyprland-layer.nix` → `window-managers`, `portals`, `quickshell`, `fonts`, `theme`, `overlays`, `nh`, `hyprlock`, `wlogout`, `vm-guest-services`, `local-hardware-clock` |
+| `features.uwu = true` | `modules/branding-layer.nix` → `uwu/nixowos.nix` |
+| `features.uwu = false` | `modules/branding-layer.nix` → `default-fastfetch.nix` |
+| `features.gameon.enable = true` | `modules/gameon-layer.nix` → `gameon.nix` |
+| `features.nixorcist = true` | `modules/generated-layer.nix` → `nixorcist/generated/all-packages.nix` |
+
+Feature modules such as `kde.nix`, `gaming.nix`, `openssh.nix`, `virtualbox.nix`,
+`flatpak.nix`, `auto-upgrade.nix`, and `copilot-cli.nix` remain always imported
+through `modules/feature-layer.nix` and guard their own behavior internally.
 
 ---
 
@@ -217,7 +228,7 @@ option system.
 There is one explicit shared channel: **`_module.args`**.
 
 ```nix
-# configuration.nix
+# modules/manifest-wiring.nix
 _module.args = { inherit features filterPkgs; };
 ```
 

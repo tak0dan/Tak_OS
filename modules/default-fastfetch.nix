@@ -5,13 +5,9 @@
 # =============================================================================
 #
 # Provides a fastfetch wrapper that uses the built-in "NixOS" logo when the
-# uwu feature is disabled.  Loaded exclusively via:
-#
-#   lib.optionals (!features.uwu) [ ./modules/default-fastfetch.nix ]
-#
-# in configuration.nix.  When features.uwu = true, modules/uwu/nixowos.nix
-# is loaded instead, providing its own fastfetch wrapper with the NixOwOS logo.
-# Having exactly one wrapper active at a time avoids binary collisions.
+# uwu feature is disabled.  The selection is owned by modules/branding-layer.nix,
+# which keeps this wrapper mutually exclusive with modules/uwu/nixowos.nix so
+# only one `fastfetch` binary is present at a time.
 #
 # =============================================================================
 { pkgs, ... }:

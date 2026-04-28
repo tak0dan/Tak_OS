@@ -30,8 +30,8 @@
 #   $4  centre gem            ANSI 33  — yellow      → kitty color3
 #   $5  small accent triangle ANSI 35  — magenta     → kitty color5
 #
-# Disabling features.uwu in configuration.nix removes this module from the
-# import list entirely, reverting every change made here automatically.
+# Disabling features.uwu causes modules/branding-layer.nix to select the plain
+# fastfetch path instead, reverting every change made here automatically.
 #
 # =============================================================================
 { lib, pkgs, ... }:
@@ -61,10 +61,9 @@ in
   # Install only the wrapper.  The patched fastfetch binary is called by its
   # Nix store path inside the script, so it never needs to be on PATH itself.
   #
-  # Revert guarantee: this module is loaded exclusively via
-  #   lib.optionals features.uwu [ ./modules/uwu/nixowos.nix ]
-  # in configuration.nix.  Setting features.uwu = false removes the import
-  # entirely, which undoes every setting below in one rebuild:
+  # Revert guarantee: modules/branding-layer.nix only imports this file when
+  # features.uwu = true.  Setting features.uwu = false removes the import,
+  # which undoes every setting below in one rebuild:
   #   • system.nixos.distroId / distroName / vendorId / vendorName → NixOS defaults
   #   • the fastfetch wrapper is removed from PATH
   environment.systemPackages = [ fastfetchWrapper ];

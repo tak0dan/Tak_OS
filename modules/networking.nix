@@ -13,8 +13,9 @@ let
       (map (user: ''subject.user == "${user}"'') networkManagerUsers);
 in
 {
-  networking.hostName = "Tak0_NixOS";
+  networking.hostName = "Tak0Nix";
   networking.networkmanager.enable = true;
+  systemd.services.NetworkManager-wait-online.enable = false;
 
   # ===========================================================================
   # 📶 WIFI-EDU — WPA2-Enterprise (PEAP/MSCHAPv2) persistent connection

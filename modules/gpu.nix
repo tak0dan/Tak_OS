@@ -18,7 +18,8 @@
 #   kernelParams = "nvidia"  +  driver = "nvidia"         — standalone Nvidia
 #   kernelParams = "nvidia"  +  driver = "nvidia-prime"   — Nvidia PRIME hybrid
 #   kernelParams = "thinkpad" + driver = "none"           — ThinkPad T480 (Intel built-in)
-#   kernelParams = "amd"     +  driver = "amd"            — AMD system
+#   kernelParams = "amd"     +  driver = "amd"            — generic AMD system
+#   kernelParams = "alurin"  +  driver = "alurin"         — Alurin AMD host profile
 #   kernelParams = "generic" +  driver = "intel"          — generic Intel box
 #   kernelParams = "generic" +  driver = "none"           — no dedicated GPU
 #
@@ -34,6 +35,7 @@ in
     ./kernel-params-thinkpad.nix
     ./kernel-params-nvidia.nix
     ./kernel-params-amd.nix
+    ./kernel-params-alurin.nix
 
     # Driver modules — userspace/display only, no boot.kernelModules
     ./amd-drivers.nix
@@ -45,7 +47,7 @@ in
   options.gpu = {
 
     kernelParams = lib.mkOption {
-      type = lib.types.enum [ "generic" "thinkpad" "nvidia" "amd" ];
+      type = lib.types.enum [ "generic" "thinkpad" "nvidia" "amd" "alurin" ];
       default = "generic";
       description = ''
         Kernel parameter profile. Mandatory — "generic" is the safe default.
@@ -54,29 +56,63 @@ in
           "thinkpad"  ThinkPad T480 — i915 GuC/HuC, Intel microcode, power-profiles-daemon
           "nvidia"    Nvidia — DRM modesetting, nvidia modules in initrd, cold-boot fix
           "amd"       AMD — amd_iommu, ppfeaturemask, AMD microcode, amdgpu early load
+          "alurin"    AMD host profile derived from hardware-configuration-dani.nix
       '';
     };
 
     driver = lib.mkOption {
-      type = lib.types.enum [ "none" "amd" "intel" "nvidia" "nvidia-prime" ];
+      type = lib.types.enum [ "none" "amd" "intel" "nvidia" "nvidia-prime" "alurin" ];
       default = "none";
       description = ''
         GPU driver profile. "none" loads no driver module.
 
-          "none"         No GPU driver (VM, headless, or hardware with built-in driver)
-          "amd"          AMD discrete/integrated — amdgpu videoDriver + VA-API packages
-          "intel"        Intel integrated — intel-media-driver + VA-API packages
-          "nvidia"       Nvidia discrete — nvidia videoDriver + full hardware.nvidia config
-          "nvidia-prime" Nvidia + Intel PRIME hybrid offload (generic, not T480-specific)
+        "none"         No GPU driver (VM, headless, or hardware with built-in driver)
+        "amd"          AMD discrete/integrated — amdgpu videoDriver + VA-API packages
+        "alurin"      Alurin AMD host profile — reuses amdgpu userspace stack
+        "intel"        Intel integrated — intel-media-driver + VA-API packages
+        "nvidia"       Nvidia discrete — nvidia videoDriver + full hardware.nvidia config
+        "nvidia-prime" Nvidia + Intel PRIME hybrid offload (generic, not T480-specific)
 
         Note: "nvidia" and "nvidia-prime" pair with kernelParams = "nvidia".
               "amd" pairs with kernelParams = "amd".
+              "alurin" pairs with kernelParams = "alurin".
               "intel" pairs with kernelParams = "generic" or "thinkpad".
       '';
     };
   };
 
   config = {
+    assertions = [
+      {
+        assertion = drv != "amd" || kp == "amd";
+        message = ''
+          GPU profile "amd" requires kernelParams = "amd".
+          Update graph.platform.kernelProfile / features.kernelParams to match.
+        '';
+      }
+      {
+        assertion = !(builtins.elem drv [ "nvidia" "nvidia-prime" ]) || kp == "nvidia";
+        message = ''
+          GPU profiles "nvidia" and "nvidia-prime" require kernelParams = "nvidia".
+          Update graph.platform.kernelProfile / features.kernelParams to match.
+        '';
+      }
+      {
+        assertion = drv != "intel" || builtins.elem kp [ "generic" "thinkpad" ];
+        message = ''
+          GPU profile "intel" requires kernelParams = "generic" or "thinkpad".
+          Update graph.platform.kernelProfile / features.kernelParams to match.
+        '';
+      }
+      {
+        assertion = drv != "alurin" || kp == "alurin";
+        message = ''
+          GPU profile "alurin" requires kernelParams = "alurin".
+          Update graph.platform.kernelProfile / features.kernelParams to match.
+        '';
+      }
+    ];
+
     # -------------------------------------------------------------------------
     # Kernel parameter profiles — exactly one active at a time
     # -------------------------------------------------------------------------
@@ -84,11 +120,12 @@ in
     kernel-params.thinkpad.enable = kp == "thinkpad";
     kernel-params.nvidia.enable   = kp == "nvidia";
     kernel-params.amd.enable      = kp == "amd";
+    kernel-params.alurin.enable   = kp == "alurin";
 
     # -------------------------------------------------------------------------
     # Driver profiles — at most one active, "none" activates nothing
     # -------------------------------------------------------------------------
-    drivers.amdgpu.enable        = drv == "amd";
+    drivers.amdgpu.enable        = drv == "amd" || drv == "alurin";
     drivers.intel.enable         = drv == "intel";
     drivers.nvidia.enable        = drv == "nvidia" || drv == "nvidia-prime";
     drivers.nvidia-prime.enable  = drv == "nvidia-prime";

@@ -104,11 +104,6 @@
           pkgs.kdePackages.kio-admin
           pkgs.hyprland-qt-support
 
-          # nixorcist CLI wrapper
-          (pkgs.writeShellScriptBin "nixorcist" ''
-            exec /etc/nixos/nixorcist/nixorcist.sh "$@"
-          '')
-
           # Package toggle tooling
           # Usage: nixos-comment discord   → disables discord system-wide
           #        nixos-uncomment discord → re-enables it
@@ -135,6 +130,12 @@
 
           (pkgs.writeShellScriptBin "nixos-smart-rebuild" ''
             exec /etc/nixos/scripts/nix-rebuild-smart.sh "$@"
+          '')
+        ]
+
+        ++ lib.optionals features.nixorcist [
+          (pkgs.writeShellScriptBin "nixorcist" ''
+            exec /etc/nixos/nixorcist/nixorcist.sh "$@"
           '')
         ];
     };

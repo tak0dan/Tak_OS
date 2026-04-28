@@ -50,6 +50,70 @@
 #                           🚀 FEATURE TOGGLES
 # =============================================================================
 let
+  # ===========================================================================
+  # 🕸️  HIGH-LEVEL GRAPH LAYER
+  # ===========================================================================
+  # This is the simplified declaration surface for major capabilities.  The
+  # canonical `features.*` attrset below is still what the module graph consumes,
+  # but these graph nodes now seed the primary feature values so the public model
+  # can stay simple while the architecture behind it remains explicit.
+  #
+  # Valid Nix shape:
+  #   graph.services = { steam = true; flatpak = true; };
+  #
+  # Future services/packages that are not wired yet can live here too:
+  #   # mongodb = true;
+  #   # mariadb = false;
+  graph = {
+    services = {
+      openssh        = true;
+      autoupdate     = true;
+      steam          = true;
+      virtualisation = true;
+      flatpak        = true;
+      nixorcist      = false;
+      homeManager    = true;
+      copilot        = true;
+      mariadb        = true;
+      mongodb        = true;
+    };
+
+    desktop = {
+      hyprland    = true;
+      kde         = true;
+      uwu         = true;
+      uwuPackages = false;
+    };
+
+    modes = {
+      gameon = false;
+    };
+
+
+    # =========================================================================
+    # 🖥️  KERNEL PARAMS PROFILE
+    # =========================================================================
+    # Selects boot-time kernel tuning.
+    # → modules/gpu.nix  (dispatches to the profile sub-module below)
+    #
+    #==================#=====================================================================================#
+    # NOTE:(IMPORTANT):# These modules ARE NOT tailored for your system and might cause kernel panics        #
+    # NOTE:(IMPORTANT):# The ONLY module tailored so far is Thinkpad one, and it is made for Thinkpad T-480  #
+    # NOTE:(IMPORTANT):# It is HIGHLY RECOMMENDED to create your own                                         #
+    #==================#=====================================================================================#
+    #
+    # "generic"   → modules/kernel-params-generic.nix   Sane defaults for any hardware
+    # "thinkpad"  → modules/kernel-params-thinkpad.nix  ThinkPad T480 (i915, power mgmt)
+    # "nvidia"    → modules/kernel-params-nvidia.nix    Discrete Nvidia (DRM, initrd)
+    # "amd"       → modules/kernel-params-amd.nix       AMD (iommu, microcode, early load)
+    # "alurin"    → modules/kernel-params-alurin.nix    Conservative AMD host profile
+    #
+    platform = {
+      kernelProfile = "thinkpad";
+      gpuProfile    = "none";
+    };
+  };
+
   features = rec {
 
     # =========================================================================
@@ -76,8 +140,9 @@ let
     # "thinkpad"  → modules/kernel-params-thinkpad.nix  ThinkPad T480 (i915, power mgmt)
     # "nvidia"    → modules/kernel-params-nvidia.nix    Discrete Nvidia (DRM, initrd)
     # "amd"       → modules/kernel-params-amd.nix       AMD (iommu, microcode, early load)
+    # "alurin"    → modules/kernel-params-alurin.nix    Conservative AMD host profile
     #
-    kernelParams = "generic";
+    kernelParams = graph.platform.kernelProfile;
 
     # =========================================================================
     # 🎮 GPU DRIVER PROFILE
@@ -88,12 +153,13 @@ let
     # NOTE: Sometimes less is better, check your hardware before enabling any of these profiles!
     #
     # "none"         → (no driver module)
-    # "amd"          → modules/amd-drivers.nix          Pair with: kernelParams = "generic"
-    # "intel"        → modules/intel-drivers.nix         Pair with: kernelParams = "generic" or "generic"
-    # "nvidia"       → modules/nvidia-drivers.nix        Pair with: kernelParams = "generic"
-    # "nvidia-prime" → modules/nvidia-prime-drivers.nix  Pair with: kernelParams = "generic"
+    # "amd"          → modules/amd-drivers.nix           Pair with: kernelParams = "amd"
+    # "alurin"      → modules/amd-drivers.nix           Pair with: kernelParams = "alurin"
+    # "intel"        → modules/intel-drivers.nix         Pair with: kernelParams = "thinkpad" or "generic"
+    # "nvidia"       → modules/nvidia-drivers.nix        Pair with: kernelParams = "nvidia"
+    # "nvidia-prime" → modules/nvidia-prime-drivers.nix  Pair with: kernelParams = "nvidia"
     #
-    gpu = "none";
+    gpu = graph.platform.gpuProfile;
 
     # ── § 1.1 · System Definition ─────────────────────────────────────────────
 
@@ -107,8 +173,8 @@ let
     #
     # All credits to yunfachi. Original dots: https://github.com/yunfachi/NixOwOS
     #
-    uwu = true; #<--- I know you want to enable it, you femboy.
-    uwuPackages = false;
+    uwu = graph.desktop.uwu; #<--- I know you want to enable it, you femboy.
+    uwuPackages = graph.desktop.uwuPackages;
     #~~~~~~~~~~~~~~~~~~
     #                 |
     #                 ∨
@@ -128,7 +194,7 @@ let
     # ⚠️  Password authentication is ON. Switch to key-based auth for
     #     production or internet-exposed machines.
     #
-    openssh = true;
+    openssh = graph.services.openssh;
 
     # =========================================================================
     # 🔄 AUTO-UPDATE
@@ -164,7 +230,7 @@ let
     #     the system on their own. Disable if you prefer manual rebuilds.
     #
     autoupdate = {
-      enable = true;
+      enable = graph.services.autoupdate;
       # Master switch.
       # Enables the auto-upgrade systemd service and timers.
       # When disabled, no scheduled rebuilds will occur.
@@ -255,7 +321,7 @@ let
     #   modules/local-hardware-clock.nix   — (inactive unless local.hardware-clock.enable)
     #   packages/hyprland.nix              — Hyprland-specific user packages
     #
-    hyprland = true;
+    hyprland = graph.desktop.hyprland;
 
     # ─── Hyprland sub-toggles ──────────────────────────────────────────────
     # All sub-toggles below require hyprland = true to have any effect.
@@ -313,7 +379,7 @@ let
     #     If hyprland = false, polkit popups will not auto-start.
     #
     # __TAKOS_FEATURE_KDE_START__
-    kde = true;
+    kde = graph.desktop.kde;
     # __TAKOS_FEATURE_KDE_END__
 
 
@@ -334,7 +400,7 @@ let
     #   /etc/nixos/assets/kernel-modules/new-lg4ff/
     #
     gameon = {
-      enable = false;   # 🎯 MASTER SWITCH — set to true to activate the entire stack
+      enable = graph.modes.gameon;   # 🎯 MASTER SWITCH — set to true to activate the entire stack
 
       # ── Compatibility Layer ─────────────────────────────────────────────
       compat = {
@@ -349,7 +415,7 @@ let
       graphics = {
         overlays  = true;   # MangoHud / GOverlay / vkBasalt + compat symlinks
         # __TAKOS_FEATURE_GAMEON_STREAMING_START__
-        streaming = false;  # Full GStreamer codec pack + noisetorch  ⚠️ HEAVY
+        streaming = false;
         # __TAKOS_FEATURE_GAMEON_STREAMING_END__
       };
 
@@ -383,7 +449,7 @@ let
     # → packages/games.nix  (user packages: Lutris, Heroic, MangoHud, etc.)
     #
     # __TAKOS_FEATURE_STEAM_START__
-    steam = false;
+    steam = graph.services.steam;
     # __TAKOS_FEATURE_STEAM_END__
 
 
@@ -403,7 +469,7 @@ let
     # explicitly instead of enabled by default during installation.
     #
     # __TAKOS_FEATURE_VIRTUALISATION_START__
-    virtualisation = false;
+    virtualisation = graph.services.virtualisation;
     # __TAKOS_FEATURE_VIRTUALISATION_END__
 
     # =========================================================================
@@ -413,7 +479,7 @@ let
     # → modules/flatpak.nix
     #
     # __TAKOS_FEATURE_FLATPAK_START__
-    flatpak = true;
+    flatpak = graph.services.flatpak;
     # __TAKOS_FEATURE_FLATPAK_END__
 
     # =========================================================================
@@ -425,7 +491,7 @@ let
     # → modules/system-packages.nix  (nixorcist CLI wrapper)
     #
     # __TAKOS_FEATURE_NIXORCIST_START__
-    nixorcist = false;
+    nixorcist = graph.services.nixorcist;
     # __TAKOS_FEATURE_NIXORCIST_END__
 
     # =========================================================================
@@ -444,7 +510,7 @@ let
     # home-manager only controls what you explicitly declare inside home.nix;
     # it will never touch files not mentioned there.
     #
-    home-manager = true;
+    home-manager = graph.services.homeManager;
     home-manager-users =
       # Derived from ./users-declared/user-list.nix (written by the installer/helper).
       # To change the list, re-run the installer or edit user-list.nix directly.
@@ -469,7 +535,7 @@ let
     #     To re-install, remove: /var/lib/copilot-cli/.installed
     #
     # __TAKOS_FEATURE_COPILOT_START__
-    copilot = false;
+    copilot = graph.services.copilot;
     # __TAKOS_FEATURE_COPILOT_END__
 
   };
@@ -501,140 +567,31 @@ in
   # ===========================================================================
   # 📦 IMPORTS
   # ===========================================================================
-  # Modules are split into three groups:
+  # configuration.nix remains the public manifest, but the implementation graph
+  # now flows through a few architectural hubs instead of one growing import
+  # list.  This keeps the feature-flag UX intact while making ownership explicit.
   #
-  #   1. Always loaded — hardware, boot, core system, gpu.nix
-  #   2. Conditionally loaded — driven by feature flags above
-  #   3. Never import the individual driver modules directly;
-  #      gpu.nix manages amd/intel/nvidia/nvidia-prime internally.
+  #   hardware-configuration.nix  → machine-specific hardware only
+  #   manifest-wiring.nix         → public interface wiring (_module.args, gpu, sddm)
+  #   foundation.nix              → always-loaded system baseline
+  #   feature-layer.nix           → always-imported modules with internal guards
+  #   home-manager-layer.nix      → conditional Home Manager stack
+  #   hyprland-layer.nix          → conditional Hyprland desktop stack
+  #   branding-layer.nix          → mutually exclusive branding path
+  #   gameon-layer.nix            → conditional GameOn stack
+  #   generated-layer.nix         → optional nixorcist-generated layer
   #
-  imports =
-   [
-     # --- Hardware ---
-     ./hardware-configuration.nix
-
-     # --- Boot ---
-     ./modules/bootloader.nix
-     ./modules/grub-theme.nix
-
-     # --- GPU (always loaded; profile + driver activation via features above) ---
-     # gpu.nix pulls in: kernel-params.nix, kernel-params-nvidia.nix,
-     #                   amd-drivers.nix, intel-drivers.nix,
-     #                   nvidia-drivers.nix, nvidia-prime-drivers.nix
-     # Activation is controlled by gpu.kernelParams and gpu.driver below.
-     ./modules/gpu.nix
-
-     # --- Display / Login ---
-     ./modules/sddm.nix #<--- Idk, this shit ocasionally works, but don't really rely on it :)
-
-     # --- Core system ---
-      ./modules/locale.nix        #<--- Make sure to use YOUR locale
-      ./modules/networking.nix    #<--- Change your networking name here
-      ./modules/users.nix
-      ./modules/audio.nix         # PipeWire (ALSA + PulseAudio compat + rtkit)
-     ./modules/hardware-graphics.nix  # Mesa / VA-API + 32-bit libs
-     ./modules/keyring.nix       # GNOME Keyring secret store
-        # --- Auto Update ---
-        ./modules/auto-upgrade.nix
-
-     # --- Shell / environment ---
-     ./modules/environment.nix
-     ./modules/zsh.nix
-     ./modules/rebuild-error-hook.nix
-
-     # --- Compatibility ---
-     ./modules/nix-ld.nix
-
-     # --- Nix daemon + nixpkgs settings ---
-     ./modules/nix-settings.nix
-
-     # --- Fonts (base set; full set loaded with hyprland below) ---
-     ./modules/fonts-base.nix
-
-     # --- Feature modules (always imported; guarded internally by features.*) ---
-     ./modules/kde.nix           # Qt/KDE runtime → features.kde
-     ./modules/openssh.nix       # SSH daemon      → features.openssh
-     ./modules/gaming.nix        # Steam + GameMode → features.steam
-     ./modules/virtualbox.nix    # VirtualBox host + Docker → features.virtualisation
-     ./modules/flatpak.nix       # Flatpak runtime + Flathub → features.flatpak
-
-     # --- System packages (assembles all package groups) ---
-     ./modules/system-packages.nix
-
-     # --- ~/.hm-local scaffold + validation (runs regardless of home-manager toggle) ---
-     ./modules/hm-local-bootstrap.nix
-
-     # --- GitHub Copilot CLI (install / cleanup on every rebuild) ---
-     ./modules/copilot-cli.nix
-
-     # --- Auto-generated package lists (managed by nixorcist) ---
-     ./nixorcist/generated/all-packages.nix
-   ]
-
-   # Declarative user environment — dotfiles, user packages, services.
-   # Config is read from ~/.hm-local/home.nix (or default.nix).
-   ++ lib.optionals features.home-manager [
-     <home-manager/nixos>
-     ./modules/hm-users.nix
-   ]
-
-   # Hyprland stack — everything that only makes sense on a Wayland compositor.
-   #
-   # vm-guest-services and local-hardware-clock are included here because they
-   # originate from the Hyprland config set. They are safe no-ops by default;
-   # activate them by setting:
-   #   vm.guest-services.enable      = true;
-   #   local.hardware-clock.enable   = true;
-   ++ lib.optionals features.hyprland [
-     # Compositor + Wayland plumbing
-     ./modules/window-managers.nix   # Hyprland, bspwm, i3, xkb layout
-     ./modules/portals.nix           # XDG portals: screen share, file picker
-     ./modules/quickshell.nix        # Wayland shell widget layer
-
-     # Visual environment
-     ./modules/fonts.nix             # Nerd fonts, CJK, icon fonts, etc.
-     ./modules/theme.nix             # GTK Adwaita-dark, cursors, dconf defaults
-     ./modules/overlays.nix          # nixpkgs patches (waybar-weather, cmake fixes)
-
-     # Tooling
-     ./modules/nh.nix                # `nh` Nix helper + nix-output-monitor + nvd
-
-     # Screen lock + hypridle.conf generation
-     ./modules/hyprlock.nix          # hyprlock package + generates ~/.config/hypr/hypridle.conf
-                                    #   → features.hypr.lock / features.hypr.idle
-
-     # Wlogout theme deployment
-     ./modules/wlogout.nix           # deploys features.hypr.logoutTheme to ~/.config/wlogout/
-
-     # Optional hardware support (inactive until their enable option is set)
-     ./modules/vm-guest-services.nix    # QEMU guest agent + SPICE
-     ./modules/local-hardware-clock.nix # RTC in local time (dual-boot Windows)
-   ]
-
-   ++ lib.optionals features.uwu [
-     ./modules/uwu/nixowos.nix        # NixOwOS logo + OS identity
-   ]
-
-   ++ lib.optionals (!features.uwu) [
-     ./modules/default-fastfetch.nix  # Plain NixOS logo
-   ]
-
-   ++ lib.optionals features.gameon.enable [
-     ./modules/gameon.nix      # GLF-OS-inspired gaming stack (all sub-features inside)
-   ];
-
-
-  # Pass feature flags and package filter to all modules via _module.args.
-  # Modules that need them declare: { features, filterPkgs, ... }:
-  _module.args = { inherit features filterPkgs; };
-
-
-  # ── Hardware profile wiring ─────────────────────────────────────────────────
-  # Connects the feature flags above to gpu.nix's custom options.
-  # These are the only two "wiring" lines that belong here rather than a module
-  # because gpu.nix defines these options and cannot set its own options.
-  gpu.kernelParams = features.kernelParams;
-  gpu.driver       = features.gpu;
+  imports = [
+    ./hardware-configuration.nix
+    (import ./modules/manifest-wiring.nix { inherit features filterPkgs; })
+    ./modules/foundation.nix
+    ./modules/feature-layer.nix
+    (import ./modules/home-manager-layer.nix { inherit lib features; })
+    (import ./modules/hyprland-layer.nix { inherit lib features; })
+    (import ./modules/branding-layer.nix { inherit lib features; })
+    (import ./modules/gameon-layer.nix { inherit lib features; })
+    (import ./modules/generated-layer.nix { inherit lib features; })
+  ];
 
 
   # ===========================================================================

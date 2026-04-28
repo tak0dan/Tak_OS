@@ -240,8 +240,6 @@ lib.mkIf gameon.enable {
 
   # ── Gaming-optimised sysctl ─────────────────────────────────────────────────
   boot.kernel.sysctl = lib.mkIf gameon.system.sysctl {
-    "vm.swappiness"                 = 10;
-    "vm.vfs_cache_pressure"         = 50;
     "vm.dirty_bytes"                = 268435456;   # 256 MiB
     "vm.dirty_background_bytes"     = 67108864;    #  64 MiB
     "vm.dirty_writeback_centisecs"  = 1500;
