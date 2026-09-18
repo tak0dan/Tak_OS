@@ -3,19 +3,17 @@
 { config, pkgs, lib, features, ... }:
 
 {
-  # Hyprland settings — start polkit agent on session start
-  services.hyprland.settings = lib.mkIf features.hyprland {
-    exec-once = [
-      "systemctl --user start polkit-kde-agent"
-      "systemctl --user start hyprpolkitagent"
-    ];
-  };
-
-  # Hyprland compositor toggle — activated via features.hyprland in configuration.nix
+  # Hyprland compositor — activated via features.hyprland in configuration.nix
   programs.hyprland.enable = features.hyprland;
 
-  # NixOS Hyprland service — required for hyprland-session.target and polkit-kde-agent
-  services.hyprland.enable = features.hyprland;
+  # Use UWSM — automatically creates graphical-session.target for proper systemd integration
+  programs.hyprland.withUWSM = lib.mkIf features.hyprland true;
+
+  # Hyprland config — start polkit agents on session start
+  environment.etc."xdg/hypr/hyprland.conf.d/10-takos-polkit.conf".text = lib.mkIf features.hyprland ''
+    exec-once = systemctl --user start polkit-kde-agent
+    exec-once = systemctl --user start hyprpolkitagent
+  '';
 
   # Hyprland polkit agent — required for authentication prompts under Hyprland
   systemd.user.services.hyprpolkitagent = lib.mkIf features.hyprland {
