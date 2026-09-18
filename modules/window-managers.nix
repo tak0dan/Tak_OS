@@ -3,6 +3,14 @@
 { config, pkgs, lib, features, ... }:
 
 {
+  # Hyprland settings — start polkit agent on session start
+  services.hyprland.settings = lib.mkIf features.hyprland {
+    exec-once = [
+      "systemctl --user start polkit-kde-agent"
+      "systemctl --user start hyprpolkitagent"
+    ];
+  };
+
   # Hyprland compositor toggle — activated via features.hyprland in configuration.nix
   programs.hyprland.enable = features.hyprland;
 
