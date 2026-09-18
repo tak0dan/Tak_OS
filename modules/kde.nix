@@ -11,7 +11,8 @@
 #   QML2_IMPORT_PATH            — Qt5 declarative component import paths
 #   plasma-applications.menu    — XDG application menu from Plasma workspace
 #
-# ⚠️  polkit-kde-agent is hardwired to hyprland-session.target.
+# ⚠️  polkit-kde-agent depends on hyprland-session.target.
+#     This target is provided by services.hyprland.enable in window-managers.nix.
 #     If features.hyprland = false, authentication popups will not auto-start.
 
 { pkgs, lib, features, ... }:

@@ -85,10 +85,6 @@ let
       uwuPackages = false;
     };
 
-    modes = {
-      gameon = false;
-    };
-
 
     # =========================================================================
     # 🖥️  KERNEL PARAMS PROFILE
@@ -384,64 +380,6 @@ let
 
 
     # =========================================================================
-    # ╔═══════════════════════════════════════════════════════════════════════╗
-    # ║  § 3 · MODES                                                         ║
-    # ╚═══════════════════════════════════════════════════════════════════════╝
-    # =========================================================================
-
-    # ╔══════════════════════════════════════════════════════════════╗
-    # ║ 🎮 GAMEON — GLF-OS-inspired gaming stack                    ║
-    # ╚══════════════════════════════════════════════════════════════╝
-    # Master toggle: set enable = true to activate everything below.
-    # Set enable = false to skip the module entirely — zero system changes.
-    #
-    # Sources for out-of-tree kernel modules (cloned locally — no fetchFromGitHub):
-    #   /etc/nixos/assets/kernel-modules/hid-fanatecff/
-    #   /etc/nixos/assets/kernel-modules/new-lg4ff/
-    #
-    gameon = {
-      enable = graph.modes.gameon;   # 🎯 MASTER SWITCH — set to true to activate the entire stack
-
-      # ── Compatibility Layer ─────────────────────────────────────────────
-      compat = {
-        wine     = true;   # Wine WoW64 Staging + winetricks
-        protonGE = true;   # proton-ge-bin as Steam extra compat tool
-      };
-
-      # ── Game Launchers ──────────────────────────────────────────────────
-      launchers = true;    # Lutris / Heroic / Faugus / UMU / Oversteer
-
-      # ── Visual & Performance ────────────────────────────────────────────
-      graphics = {
-        overlays  = true;   # MangoHud / GOverlay / vkBasalt + compat symlinks
-        # __TAKOS_FEATURE_GAMEON_STREAMING_START__
-        streaming = false;
-        # __TAKOS_FEATURE_GAMEON_STREAMING_END__
-      };
-
-      # ── Hardware / Input ────────────────────────────────────────────────
-      hardware = {
-        controllers = true;   # xone / xpadneo / hid-tmff2; ratbagd; piper;
-                              #   opentabletdriver; steam-hardware; DualSense udev
-        rgb         = true;   # OpenRGB service (all-plugins build)
-        remap       = true;   # input-remapper daemon + polkit + autoload unit
-
-        wheels = {
-          fanatec  = true;   # ⚠️ local src — hid-fanatecff kernel module
-          logitech = true;   # ⚠️ local src — new-lg4ff kernel module
-        };
-      };
-
-      # ── System Optimisations ────────────────────────────────────────────
-      system = {
-        sysctl      = true;   # Gaming sysctl + Mesa shader-cache env vars
-        zram        = true;   # zram-swap (zstd, 25 % RAM, priority 5)
-        ioScheduler = true;   # BFQ I/O scheduler udev rule on all block devices
-        audio       = true;   # Low-latency PipeWire (256-sample quantum + usbcore.autosuspend=-1)
-      };
-    };
-
-    # =========================================================================
     # 🎮 STEAM / GAMING
     # =========================================================================
     # Steam with Gamescope + GameMode performance governor.
@@ -577,9 +515,8 @@ in
   #   feature-layer.nix           → always-imported modules with internal guards
   #   home-manager-layer.nix      → conditional Home Manager stack
   #   hyprland-layer.nix          → conditional Hyprland desktop stack
-  #   branding-layer.nix          → mutually exclusive branding path
-  #   gameon-layer.nix            → conditional GameOn stack
-  #   generated-layer.nix         → optional nixorcist-generated layer
+    #   branding-layer.nix          → mutually exclusive branding path
+    #   generated-layer.nix         → optional nixorcist-generated layer
   #
   imports = [
     ./hardware-configuration.nix
@@ -589,7 +526,6 @@ in
     (import ./modules/home-manager-layer.nix { inherit lib features; })
     (import ./modules/hyprland-layer.nix { inherit lib features; })
     (import ./modules/branding-layer.nix { inherit lib features; })
-    (import ./modules/gameon-layer.nix { inherit lib features; })
     (import ./modules/generated-layer.nix { inherit lib features; })
   ];
 

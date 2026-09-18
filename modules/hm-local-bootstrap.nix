@@ -18,7 +18,9 @@
 { lib, pkgs, features, ... }:
 {
   system.activationScripts.hm-local-dirs.text =
-    lib.concatMapStrings (user: ''
+    ''
+      install -d -m 0755 /etc/nixos/.hm-local-cache
+    '' + lib.concatMapStrings (user: ''
       # ── directory ────────────────────────────────────────────────────────
       if [ ! -d "/home/${user}/.hm-local" ]; then
         mkdir -p "/home/${user}/.hm-local"
@@ -58,5 +60,19 @@ ${builtins.readFile ./hm-home-scaffold.nix}HMEOF
       # ── ownership: user must be able to edit/delete without sudo ─────────
       chown -R "${user}:" "/home/${user}/.hm-local"
       chmod  u+rwX        "/home/${user}/.hm-local"
+
+      # ── evaluation cache for system Home Manager ─────────────────────────
+      _hm_src=""
+      if [ -f "/home/${user}/.hm-local/home.nix" ]; then
+        _hm_src="/home/${user}/.hm-local/home.nix"
+      elif [ -f "/home/${user}/.hm-local/default.nix" ]; then
+        _hm_src="/home/${user}/.hm-local/default.nix"
+      fi
+
+      if [ -n "$_hm_src" ]; then
+        install -m 0644 "$_hm_src" "/etc/nixos/.hm-local-cache/${user}.nix"
+      else
+        rm -f "/etc/nixos/.hm-local-cache/${user}.nix"
+      fi
     '') features.home-manager-users;
 }

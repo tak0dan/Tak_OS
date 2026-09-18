@@ -41,7 +41,6 @@ modules/
 ├── home-manager-layer.nix     ← Conditional Home Manager import hub
 ├── hyprland-layer.nix         ← Conditional Hyprland desktop import hub
 ├── branding-layer.nix         ← Conditional branding import hub
-├── gameon-layer.nix           ← Conditional GameOn import hub
 ├── generated-layer.nix        ← Conditional nixorcist-generated import hub
 │
 │── Hardware & Boot ──────────────────────────────────────────
@@ -84,8 +83,8 @@ modules/
 ├── openssh.nix                ← SSH daemon (guarded by features.openssh)
 ├── virtualbox.nix             ← VirtualBox host + Docker (guarded by features.virtualisation)
 ├── flatpak.nix                ← Flatpak runtime + Flathub (guarded by features.flatpak)
-├── window-managers.nix        ← Hyprland, bspwm, i3, xkb (loaded when features.hyprland)
-├── portals.nix                ← XDG portals: screen share, file picker
+├── window-managers.nix        ← Hyprland + services.hyprland.enable, hyprpolkitagent, bspwm/i3, xkb
+├── portals.nix                ← XDG portals (hyprland, gtk, kde) for screen share, file picker
 ├── quickshell.nix             ← Wayland shell widget layer
 ├── fonts.nix                  ← Full Nerd Font / CJK / icon font set
 ├── fonts-base.nix             ← Minimal base font set (always loaded)

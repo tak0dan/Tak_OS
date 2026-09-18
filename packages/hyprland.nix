@@ -92,7 +92,7 @@ with pkgs; [
   procps        # ps, top, kill and other /proc tools
   socat         # Socket relay / network debugging
   swww          # Wallpaper daemon (also declared above for group clarity)
-  thunar        # GTK file manager
+  xfce.thunar   # GTK file manager
   yazi          # Terminal file manager
 
 ]

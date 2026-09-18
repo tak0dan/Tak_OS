@@ -94,10 +94,6 @@
         ++ lib.optionals (features.hyprland && features.hypr.launcher)
           (filter [ pkgs.rofi ])
 
-        # ── GameOn packages ─────────────────────────────────────────────────
-        ++ lib.optionals features.gameon.enable
-          (import ../packages/gameon.nix { inherit pkgs features; })
-
         # Always-installed system utilities
         ++ [
           pkgs.kdePackages.polkit-kde-agent-1

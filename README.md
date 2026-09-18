@@ -206,10 +206,9 @@ These are imported unconditionally, regardless of any feature flag:
 | Condition | Modules loaded |
 |-----------|---------------|
 | `features.home-manager = true` | `modules/home-manager-layer.nix` → `<home-manager/nixos>`, `hm-users` |
-| `features.hyprland = true` | `modules/hyprland-layer.nix` → `window-managers`, `portals`, `quickshell`, `fonts`, `theme`, `overlays`, `nh`, `hyprlock`, `wlogout`, `vm-guest-services`, `local-hardware-clock` |
+| `features.hyprland = true` | `modules/hyprland-layer.nix` → `window-managers` (includes `services.hyprland.enable` + `hyprpolkitagent`), `portals` (includes `xdg-desktop-portal-kde`), `quickshell`, `fonts`, `theme`, `overlays`, `nh`, `hyprlock`, `wlogout`, `vm-guest-services`, `local-hardware-clock` |
 | `features.uwu = true` | `modules/branding-layer.nix` → `uwu/nixowos.nix` |
 | `features.uwu = false` | `modules/branding-layer.nix` → `default-fastfetch.nix` |
-| `features.gameon.enable = true` | `modules/gameon-layer.nix` → `gameon.nix` |
 | `features.nixorcist = true` | `modules/generated-layer.nix` → `nixorcist/generated/all-packages.nix` |
 
 Feature modules such as `kde.nix`, `gaming.nix`, `openssh.nix`, `virtualbox.nix`,

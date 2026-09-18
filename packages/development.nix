@@ -61,7 +61,7 @@ with pkgs; [
   # =========================
   # Perl
   # =========================
-  perl5Packages.PlackMiddlewareFixMissingBodyInRedirect  # PSGI middleware — fix missing body in redirects
+  perlPackages.PlackMiddlewareFixMissingBodyInRedirect  # PSGI middleware — fix missing body in redirects
 
   # =========================
   # Python

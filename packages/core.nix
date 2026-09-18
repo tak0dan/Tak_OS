@@ -31,7 +31,7 @@ with pkgs; [
   # =========================
   # File Managers (GUI)
   # =========================
-  thunar          # GTK file manager (XFCE)
+  xfce.thunar     # GTK file manager (XFCE)
 
   # =========================
   # Media Utilities
