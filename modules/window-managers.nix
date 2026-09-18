@@ -12,8 +12,8 @@
   # Hyprland polkit agent — required for authentication prompts under Hyprland
   systemd.user.services.hyprpolkitagent = lib.mkIf features.hyprland {
     description = "Hyprland Polkit Agent";
-    after    = [ "hyprland-session.target" ];
-    wantedBy = [ "hyprland-session.target" ];
+    after    = [ "graphical-session.target" ];
+    wantedBy = [ "graphical-session.target" ];
     serviceConfig = {
       ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";
       Restart  = "on-failure";

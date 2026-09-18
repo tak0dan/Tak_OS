@@ -7,12 +7,12 @@
 # Activated when features.kde = true (set in configuration.nix).
 #
 #   qt platformTheme            — native KDE file dialogs and styling
-#   polkit-kde-agent            — authentication popups, wired to hyprland-session.target
+#   polkit-kde-agent            — authentication popups, wired to graphical-session.target
 #   udisks2                     — disk mounting/unmounting for Dolphin and other file managers
 #   QML2_IMPORT_PATH            — Qt5 declarative component import paths
 #   plasma-applications.menu    — XDG application menu from Plasma workspace
 #
-# ⚠️  polkit-kde-agent depends on hyprland-session.target.
+# ⚠️  polkit-kde-agent depends on graphical-session.target.
 #     This target is provided by services.hyprland.enable in window-managers.nix.
 #     If features.hyprland = false, authentication popups will not auto-start.
 
@@ -36,10 +36,8 @@
   # Udisks2 — disk mounting/unmounting for Dolphin and other file managers
   services.udisks2.enable = lib.mkIf features.kde true;
 
-  # Enable polkit KDE integration
-  services.polkit.kdeIntegration.enable = lib.mkIf features.kde true;
-
-  # Polkit rules — allow users to mount/unmount disks without password prompt
+  # Polkit configuration — enable polkit daemon and allow udisks2 actions
+  security.polkit.enable = lib.mkIf features.kde true;
   security.polkit.extraConfig = lib.mkIf features.kde ''
     polkit.addRule(function(action, subject) {
       if (action.id.indexOf("org.freedesktop.udisks2.") === 0 &&
@@ -51,8 +49,8 @@
 
   systemd.user.services.polkit-kde-agent = lib.mkIf features.kde {
     description = "Polkit KDE Authentication Agent";
-    after    = [ "hyprland-session.target" ];
-    wantedBy = [ "hyprland-session.target" ];
+    after    = [ "graphical-session.target" ];
+    wantedBy = [ "graphical-session.target" ];
     serviceConfig = {
       ExecStart =
         "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
