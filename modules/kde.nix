@@ -8,6 +8,7 @@
 #
 #   qt platformTheme            — native KDE file dialogs and styling
 #   polkit-kde-agent            — authentication popups, wired to hyprland-session.target
+#   udisks2                     — disk mounting/unmounting for Dolphin and other file managers
 #   QML2_IMPORT_PATH            — Qt5 declarative component import paths
 #   plasma-applications.menu    — XDG application menu from Plasma workspace
 #
@@ -31,6 +32,22 @@
       ]
     );
   };
+
+  # Udisks2 — disk mounting/unmounting for Dolphin and other file managers
+  services.udisks2.enable = lib.mkIf features.kde true;
+
+  # Enable polkit KDE integration
+  services.polkit.kdeIntegration.enable = lib.mkIf features.kde true;
+
+  # Polkit rules — allow users to mount/unmount disks without password prompt
+  security.polkit.extraConfig = lib.mkIf features.kde ''
+    polkit.addRule(function(action, subject) {
+      if (action.id.indexOf("org.freedesktop.udisks2.") === 0 &&
+          action.id !== "org.freedesktop.udisks2.enable-disc") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
   systemd.user.services.polkit-kde-agent = lib.mkIf features.kde {
     description = "Polkit KDE Authentication Agent";

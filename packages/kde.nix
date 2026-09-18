@@ -47,6 +47,11 @@ with pkgs; [
   kdePackages.kservice     # KDE service framework
 
   # =========================
+  # System Utilities
+  # =========================
+  udisks2            # Disk mounting/unmounting daemon for Dolphin
+
+  # =========================
   # Plasma / Workspace Integration
   # =========================
   kdePackages.plasma-integration   # Plasma integration for non-Plasma apps
