@@ -371,8 +371,9 @@ let
     # → modules/kde.nix
     # → packages/kde.nix  (user packages)
     #
-    # ⚠️  polkit-kde-agent is hardwired to hyprland-session.target.
-    #     If hyprland = false, polkit popups will not auto-start.
+    # ⚠️  polkit-kde-agent depends on hyprland-session.target.
+    #     This target is provided by services.hyprland.enable.
+    #     udisks2 is enabled for disk mounting/unmounting support.
     #
     # __TAKOS_FEATURE_KDE_START__
     kde = graph.desktop.kde;

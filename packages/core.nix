@@ -96,6 +96,7 @@ with pkgs; [
   jq           # Command-line JSON processor and formatter
   os-prober    # Detect other OSes for multi-boot (GRUB)
   pacman       # Arch Linux package manager (compatibility / scripts)
+  udisks2      # Disk mounting/unmounting daemon
 
   # =========================
   # Terminal Emulators
