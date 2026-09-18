@@ -13,7 +13,7 @@
 #   plasma-applications.menu    — XDG application menu from Plasma workspace
 #
 # ⚠️  polkit-kde-agent depends on graphical-session.target.
-#     This target is provided by services.hyprland.enable in window-managers.nix.
+#     This target is provided by programs.hyprland.withUWSM in window-managers.nix.
 #     If features.hyprland = false, authentication popups will not auto-start.
 
 { pkgs, lib, features, ... }:

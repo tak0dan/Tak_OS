@@ -83,7 +83,7 @@ modules/
 ├── openssh.nix                ← SSH daemon (guarded by features.openssh)
 ├── virtualbox.nix             ← VirtualBox host + Docker (guarded by features.virtualisation)
 ├── flatpak.nix                ← Flatpak runtime + Flathub (guarded by features.flatpak)
-├── window-managers.nix        ← Hyprland + services.hyprland.enable, hyprpolkitagent, bspwm/i3, xkb
+├── window-managers.nix        ← Hyprland + withUWSM, hyprpolkitagent, bspwm/i3, xkb
 ├── portals.nix                ← XDG portals (hyprland, gtk, kde) for screen share, file picker
 ├── quickshell.nix             ← Wayland shell widget layer
 ├── fonts.nix                  ← Full Nerd Font / CJK / icon font set

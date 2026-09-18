@@ -372,7 +372,7 @@ let
     # → packages/kde.nix  (user packages)
     #
     # ⚠️  polkit-kde-agent depends on hyprland-session.target.
-    #     This target is provided by services.hyprland.enable.
+    #     This target is provided by programs.hyprland.withUWSM.
     #     udisks2 is enabled for disk mounting/unmounting support.
     #
     # __TAKOS_FEATURE_KDE_START__
