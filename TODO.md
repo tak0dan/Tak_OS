@@ -102,3 +102,31 @@ Profiles are composed, not copied: `hyprland` = `minimal` + `kde-runtime` +
 - [ ] Module manifest reference, with one worked example (`kde` shared by KDE
       and Hyprland).
 - [ ] Single architecture diagram once section 0 is resolved.
+
+## 7. `takos-rebuild` — smart rebuild with version rebasing
+
+Goal: one command that rebuilds the system and can move the whole configuration
+to another NixOS release, renaming deprecated packages on the way.
+
+- [ ] `takos-rebuild` (shell entry point, installed to the system PATH) wraps
+      `nixos-rebuild` and calls `scripts/nix-rebuild-smart.sh` for the build step.
+- [ ] **Rename pass from evaluation warnings.** NixOS already reports every
+      renamed attribute ("`swww` has been renamed to `awww`"). Parse those
+      warnings from `nix eval`/`nixos-rebuild build` output and rewrite the
+      old name in the declaration files. Precise, and needs no rename table.
+- [ ] **Rebase pass from nixorcist search.** For a package that is missing in
+      the target release, use `nixorcist search <name> --release <R> --json` to
+      propose the closest replacement and show it to the user before writing.
+      Rebase only touches names it can verify on the target release.
+- [ ] `takos-rebuild --version` opens an nmtui-like window (curses, shared with
+      the profile installer) listing the stable releases **23.05 → 26.05**, plus
+      a text field for a custom release string. Choosing one sets
+      `system.stateVersion`-independent channel/input pin and runs the rebase.
+- [ ] Dry-run first: `takos-rebuild --version 25.11 --plan` prints every rename
+      and replacement without writing files. Writing requires confirmation.
+- [ ] Every change is staged in a git-tracked working tree, so the rebase can be
+      reviewed with `git diff` and reverted with `git checkout`.
+- [ ] Failure path: if the target build fails, roll back the declaration
+      changes and keep the previous generation (`nixos-rebuild` rollback).
+- [ ] Tests: fixtures with a deprecated name, a removed package, and a
+      no-op config; check the plan output and the rewritten files.
