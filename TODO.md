@@ -131,7 +131,12 @@ to another NixOS release, renaming deprecated packages on the way.
 - [x] Tests: fixtures with a deprecated name, a removed package, and a
       no-op config; check the plan output and the rewritten files.
 
-## 8. Token-based configuration composition (direction, not started)
+## 8. Token-based configuration composition (in progress)
+
+Done: `scripts/takos_tokens.py` indexes every module and top-level binding
+(91 module tokens, 215 binding tokens today), finds tokens by name, reports
+missing catalog modules with the closest token, and rebuilds a missing module
+from a token (preview first, `--apply` to write, origin comment in the file).
 
 Idea: split the configuration into **tokens** — the smallest named pieces (a
 module, a function, an option set, a package list) with declared inputs and
@@ -141,11 +146,13 @@ outputs — and compose a system from tokens for a given need.
       composer can see what is missing before it builds.
 - [ ] Compose a profile from tokens instead of whole modules, so a shared piece
       such as "Qt runtime" is one token used by KDE and Hyprland alike.
-- [ ] **Reconstruct what is missing**: when a token that a profile needs is
+- [x] **Reconstruct what is missing**: when a token that a profile needs is
       absent (renamed, removed, or never written), generate it from the nearest
       known-good token or from nixorcist's package index, then show the diff
       before writing it.
-- [ ] Keep every reconstructed token traceable (comment with its origin) so it
+- [x] Keep every reconstructed token traceable (comment with its origin) so it
       can be reviewed or removed later.
+- [ ] Compose a profile from tokens instead of whole modules (not started;
+      `takos_tokens.py` only indexes and reconstructs module files so far).
 - [ ] Use the same token index for `takos-rebuild` renames, so a rename is a
       token-level change, not a text search.
