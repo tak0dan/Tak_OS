@@ -80,3 +80,10 @@ sudo nixos-rebuild switch
 
 *Tak_OS — declarative, modular, yours.*  
 *© 2026 tak0dan · GNU GPLv3 · https://github.com/tak0dan/Tak_OS*
+
+## Wallpapers
+
+`assets/Wallpapers` is not tracked. It used to be a symlink to a personal
+directory outside the repo, which broke evaluation on any other machine. To use
+your own wallpapers, create the directory and add images to it; the theme
+modules do not depend on specific file names.

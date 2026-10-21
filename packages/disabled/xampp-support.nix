@@ -1,3 +1,4 @@
+# DISABLED: not imported by the configuration. Kept for reference; fix before re-enabling.
 { mkIf, ... }:
 
 let

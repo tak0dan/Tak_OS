@@ -29,7 +29,7 @@ with pkgs; [
     python313Packages.pip
     python314Packages.ifconfig-parser
 #    steam
-    swww
+    awww
     unixtools.ifconfig
     wallust
 ]

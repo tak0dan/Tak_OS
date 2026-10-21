@@ -11,7 +11,7 @@ let
   profile = overrides.${user} or defaultTheme;
   themeDir = builtins.path {
     name = "wlogout-theme-${profile}";
-    path = /etc/nixos/assets/wlogout + "/${profile}";
+    path = ../assets/wlogout + "/${profile}";
   };
 in
 {

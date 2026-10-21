@@ -1,0 +1,131 @@
+# Tak_OS profile catalog
+# ======================
+#
+# A MODULE is a reusable unit: one file under modules/ (or packages/) plus
+# metadata. A PROFILE is a named selection of modules and other profiles.
+#
+#   - One module may appear in several profiles. The resolver keeps only the
+#     first occurrence, so a shared base such as "kde-base" is loaded once.
+#   - A profile may `include` other profiles, e.g. hyprland = minimal + desktop.
+#   - `requires` pulls a module in automatically; `conflicts` refuses the
+#     combination. `loaded = true` marks modules that configuration.nix already
+#     imports unconditionally (they are gated by features.* instead), so the
+#     generator does not import them a second time.
+#
+# Check the catalog with:  python3 scripts/takos_profiles.py check
+
+# ── Modules ──────────────────────────────────────────────────────────────────
+
+[modules.networking]
+title = "NetworkManager and hostname"
+path = "modules/networking.nix"
+loaded = true
+
+[modules.openssh]
+title = "OpenSSH server"
+path = "modules/openssh.nix"
+loaded = true
+
+[modules.kde-base]
+title = "KDE / Qt runtime (shared base)"
+description = "Qt and KDE libraries. Used by the KDE profile and as the base of Hyprland for KDE apps."
+path = "modules/kde.nix"
+loaded = true
+
+[modules.hyprland]
+title = "Hyprland desktop"
+path = "modules/hyprland.nix"
+requires = ["kde-base"]
+
+[modules.gaming]
+title = "Steam, GameMode, controllers"
+path = "modules/gaming.nix"
+loaded = true
+
+[modules.flatpak]
+title = "Flatpak and Flathub"
+path = "modules/flatpak.nix"
+loaded = true
+
+[modules.copilot]
+title = "GitHub Copilot CLI"
+path = "modules/copilot-cli.nix"
+loaded = true
+
+[modules.virtualbox]
+title = "VirtualBox host"
+path = "modules/virtualbox.nix"
+loaded = true
+
+[modules.vm-guest]
+title = "QEMU guest agent and SPICE"
+path = "modules/vm-guest-services.nix"
+loaded = true
+
+[modules.docker]
+title = "Docker"
+path = "modules/docker.nix"
+conflicts = ["virtualbox"]
+
+[modules.mariadb]
+title = "MariaDB server"
+path = "modules/mariadb.nix"
+
+[modules.httpd]
+title = "Apache HTTP server"
+path = "modules/httpd.nix"
+
+# ── Profiles ─────────────────────────────────────────────────────────────────
+
+[profiles.minimal]
+title = "Minimal"
+description = "Base system with networking and SSH. No desktop."
+modules = ["networking", "openssh"]
+
+[profiles.kde]
+title = "KDE Plasma"
+description = "Plasma desktop on the minimal base."
+includes = ["minimal"]
+modules = ["kde-base", "flatpak"]
+
+[profiles.hyprland]
+title = "Hyprland"
+description = "Wayland desktop. Reuses the KDE base for Qt/KDE applications."
+includes = ["minimal"]
+modules = ["kde-base", "hyprland", "flatpak"]
+
+[profiles.development]
+title = "Development"
+description = "Containers and the Copilot CLI on top of the minimal base."
+includes = ["minimal"]
+modules = ["docker", "copilot"]
+
+[profiles.gaming]
+title = "Gaming"
+description = "Steam and GameMode on the minimal base."
+includes = ["minimal"]
+modules = ["gaming"]
+
+[profiles.devops]
+title = "DevOps"
+description = "Containers, database and web server for service work."
+includes = ["minimal"]
+modules = ["docker", "mariadb", "httpd"]
+
+[profiles.experimenting]
+title = "Experimenting"
+description = "Minimal base plus the Copilot CLI for trying things out."
+includes = ["minimal"]
+modules = ["copilot"]
+
+[profiles.testing]
+title = "Testing"
+description = "Containers and a database for test environments."
+includes = ["minimal"]
+modules = ["docker", "mariadb"]
+
+[profiles.vm]
+title = "Virtual machine guest"
+description = "Guest tools for running inside QEMU/KVM, VirtualBox or VMware."
+includes = ["minimal"]
+modules = ["vm-guest"]

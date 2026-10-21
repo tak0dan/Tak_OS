@@ -34,7 +34,7 @@ lib.mkIf (features.hyprland && features.hypr.logout)
     # Build a store path for a theme directory (evaluated once per unique theme).
     themeDir = profile: builtins.path {
       name = "wlogout-theme-${profile}";
-      path = /etc/nixos/assets/wlogout + "/${profile}";
+      path = ../assets/wlogout + "/${profile}";
     };
   in
   {

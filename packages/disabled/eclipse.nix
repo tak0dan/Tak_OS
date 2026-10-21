@@ -1,3 +1,4 @@
+# DISABLED: not imported by the configuration. Kept for reference; fix before re-enabling.
 # Tak_OS · eclipse.nix — Eclipse IDE variants
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #{ pkgs }:

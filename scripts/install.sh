@@ -133,6 +133,26 @@ tui_menu() {
 }
 
 REPO_VERSION="$(grep -oP 'stateVersion\s*=\s*"\K[^"]+' "${PROJECT_DIR}/configuration.nix" | head -1)"
+RELEASES_SCRIPT="${PROJECT_DIR}/scripts/takos_releases.py"
+
+# Release to install: pc (this machine), config (the pulled configuration), or X.Y.
+# Automatic mode reads TAKOS_RELEASE (default: config); --edit shows a picker.
+choose_release() {
+  local cfg pc r choice
+  local -a args=()
+  cfg="$(python3 "$RELEASES_SCRIPT" --repo "$PROJECT_DIR" resolve config)"
+  pc="$(python3 "$RELEASES_SCRIPT" resolve pc 2>/dev/null || true)"
+  args+=("config" "Version of the pulled configuration ($cfg)" "ON")
+  [[ -n "$pc" ]] && args+=("pc" "Version of this PC ($pc)" "OFF")
+  while IFS= read -r r; do
+    [[ -n "$r" && "$r" != "$cfg" && "$r" != "$pc" ]] && args+=("$r" "NixOS $r" "OFF")
+  done < <(python3 "$RELEASES_SCRIPT" list 2>/dev/null)
+  choice="$(tui_radio "Release" "Install which NixOS release?" "${args[@]}")"
+  case "$choice" in
+    pc|config) python3 "$RELEASES_SCRIPT" --repo "$PROJECT_DIR" resolve "$choice" ;;
+    *)         echo "$choice" ;;
+  esac
+}
 [[ -x "$DISCOVER_USERS_SCRIPT" ]] || chmod +x "$DISCOVER_USERS_SCRIPT" 2>/dev/null || true
 [[ -x "$DETECT_HARDWARE_SCRIPT" ]] || chmod +x "$DETECT_HARDWARE_SCRIPT" 2>/dev/null || true
 
@@ -412,13 +432,21 @@ build_user_mapping
 
 # ── Phase 1 ──────────────────────────────────────────────────────────────────
 TEMP_ROOT="$(mktemp -d)"
+if [[ "$MODE" == "edit" ]]; then
+  TARGET_RELEASE="$(choose_release)" || die "Release selection failed."
+else
+  TARGET_RELEASE="$(python3 "$RELEASES_SCRIPT" --repo "$PROJECT_DIR" resolve "${TAKOS_RELEASE:-config}")" \
+    || die "Cannot resolve release '${TAKOS_RELEASE:-config}' (use pc, config, or X.Y)."
+fi
+info "Target NixOS release: ${TARGET_RELEASE}"
+
 step "Phase 1: Channel upgrade"
 if [[ "$DRY_RUN" == "true" ]]; then
   info "Skipped in dry run."
 else
-  nix-channel --add "https://nixos.org/channels/nixos-${REPO_VERSION}" nixos
+  nix-channel --add "https://nixos.org/channels/nixos-${TARGET_RELEASE}" nixos
   nix-channel --add \
-    "https://github.com/nix-community/home-manager/archive/release-${REPO_VERSION}.tar.gz" \
+    "https://github.com/nix-community/home-manager/archive/release-${TARGET_RELEASE}.tar.gz" \
     home-manager
   nix-channel --update
   nixos-rebuild build 2>/dev/null && ok "Baseline build OK." \
@@ -498,7 +526,7 @@ scr_review() {
 
 GPU            : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
 Detected GPU   : ${DET_GPUS:-none} (VM guest: ${DET_GUEST})
-NixOS          : ${REPO_VERSION}
+NixOS          : ${TARGET_RELEASE}
 Virtualisation : ${FEATURES[VIRTUALISATION]}
 
 Repo users     : ${_repo_users}
@@ -554,6 +582,8 @@ fi
 cp "$DETECTED_FILE" "${STAGE_DIR}/hardware-detected.nix"
 sed -i "s/^\(\s*kernelParams\s*=\s*\)\"[^\"]*\";/\1\"${KERNEL_VALUE}\";/" "${STAGE_DIR}/configuration.nix"
 sed -i "s/^\(\s*gpu\s*=\s*\)\"[^\"]*\";/\1\"${DRIVER_VALUE}\";/" "${STAGE_DIR}/configuration.nix"
+# stateVersion follows the release that is installed (fresh installs must match it).
+sed -i "s/\(stateVersion\s*=\s*\)\"[^\"]*\";/\1\"${TARGET_RELEASE}\";/" "${STAGE_DIR}/configuration.nix"
 
 FEATURE_ARGS=()
 for key in "${FEATURE_ORDER[@]}"; do FEATURE_ARGS+=("${key}=${FEATURES[$key]}"); done
@@ -561,6 +591,14 @@ apply_feature_markers "${STAGE_DIR}/configuration.nix" "${FEATURE_ARGS[@]}"
 
 sed -i "s/networking\.hostName = \"[^\"]*\"/networking.hostName = \"${INSTALL_HOST}\"/" \
   "${STAGE_DIR}/modules/networking.nix"
+
+# Profile selection (set by takos-installer.py or the environment). Without it
+# the staged copy keeps the committed profile-selection.nix (minimal).
+if [[ -n "${TAKOS_PROFILE:-}" || -n "${TAKOS_MODULES:-}" ]]; then
+  info "Applying profile: ${TAKOS_PROFILE:-custom} ${TAKOS_MODULES:+(modules: $TAKOS_MODULES)}"
+  python3 "${STAGE_DIR}/scripts/takos_profiles.py" --repo "${STAGE_DIR}" write "${TAKOS_PROFILE:-minimal}" \
+    ${TAKOS_MODULES:+--modules "$TAKOS_MODULES"} || die "Profile resolution failed."
+fi
 
 write_user_files
 info "Hostname=${INSTALL_HOST}  GPU=${KERNEL_VALUE}/${DRIVER_VALUE}  Virtualisation=${FEATURES[VIRTUALISATION]}"

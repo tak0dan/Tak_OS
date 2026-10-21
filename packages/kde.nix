@@ -22,7 +22,8 @@
 with pkgs; [
 
   # Native KDE/KIO popup bridge used by the Hyprland desktop grid.
-  (callPackage /home/tak_1/native-kio-context-menu/package.nix { })
+  # Local-only package: /home/tak_1 is not in the repo, so it is disabled here.
+  # (callPackage /home/tak_1/native-kio-context-menu/package.nix { })
 
   # =========================
   # Core KDE Applications
