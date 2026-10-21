@@ -15,6 +15,9 @@ with pkgs; [
   # Archive & Compression
   # =========================
   p7zip           # 7-Zip archive support (.7z, .zip, .rar, …)
+  zip
+  gzip
+
 
   # =========================
   # File Utilities
@@ -31,7 +34,7 @@ with pkgs; [
   # =========================
   # File Managers (GUI)
   # =========================
-  thunar          # GTK file manager (XFCE)
+  pkgs.thunar    # GTK file manager (XFCE)
 
   # =========================
   # Media Utilities
@@ -56,6 +59,7 @@ with pkgs; [
   flatpak   # Universal app sandboxing and distribution runtime
   gh        # GitHub CLI
   git       # Distributed version control system
+  (callPackage ./nix-gui.nix { }) # Graphical NixOS configuration editor
 
   # =========================
   # Process & System Monitoring

@@ -28,7 +28,7 @@
           ];
       });
 
-      # Specifically patch the nested attribute path used by nixpkgs: antlr4_9.runtime.cpp
+# Specifically patch the nested attribute path used by nixpkgs: antlr4_9.runtime.cpp
       antlr4_9 =
         prev.antlr4_9
         // {

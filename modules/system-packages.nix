@@ -7,7 +7,6 @@
 #
 # Filtering is two-layered:
 #   filterPkgs              — filters against packages/disabled/disabled-packages.nix
-#                             (managed by nixos-comment / nixos-uncomment CLI tools)
 #   config.kool.disabledPackages — NixOS option; set directly in configuration.nix
 #                             for quick one-off overrides without touching the file
 #
@@ -17,11 +16,7 @@
 #   packages/hyprland.nix       — features.hyprland
 #   packages/games.nix          — features.steam
 #
-# Inline CLI tools defined here:
-#   nixorcist           — wrapper for /etc/nixos/nixorcist/nixorcist.sh
-#   nixos-comment       — disable a package system-wide (adds to disabled-packages.nix)
-#   nixos-uncomment     — re-enable a package (removes from disabled-packages.nix)
-#   nixos-smart-rebuild — wrapper for scripts/nix-rebuild-smart.sh
+# Nixorcist is packaged independently under packages/nixorcist.
 
 { config, pkgs, lib, features, filterPkgs, ... }:
 {
@@ -31,7 +26,7 @@
     description = ''
       Extra package names to exclude from all package groups globally.
       Set directly in configuration.nix for quick one-off overrides.
-      For permanent changes, use nixos-comment / nixos-uncomment instead.
+      Keep permanent exclusions in packages/disabled/disabled-packages.nix.
     '';
   };
 
@@ -55,17 +50,9 @@
         ++ lib.optionals features.hyprland
           (filter (import ../packages/hyprland.nix { inherit pkgs; }))
 
-        # nixos-hyprland integration packages (gated here so nvtop is GPU-conditional)
+        # nixos-hyprland integration packages
         ++ lib.optionals features.hyprland
           (filter (import ../packages/nixos-hyprland.nix { inherit pkgs; }))
-
-        # nvtop — GPU monitor, variant selected by features.gpu
-        ++ lib.optionals features.hyprland [
-          (if features.gpu == "nvidia" || features.gpu == "nvidia-prime"
-           then pkgs.nvtopPackages.nvidia
-           else if features.gpu == "amd" then pkgs.nvtopPackages.amd
-           else pkgs.nvtopPackages.intel)
-        ]
 
         ++ lib.optionals features.steam
           (filter (import ../packages/games.nix { inherit pkgs; }))
@@ -94,48 +81,16 @@
         ++ lib.optionals (features.hyprland && features.hypr.launcher)
           (filter [ pkgs.rofi ])
 
-        # ── GameOn packages ─────────────────────────────────────────────────
-        ++ lib.optionals features.gameon.enable
-          (import ../packages/gameon.nix { inherit pkgs features; })
-
         # Always-installed system utilities
         ++ [
           pkgs.kdePackages.polkit-kde-agent-1
           pkgs.kdePackages.kio-admin
           pkgs.hyprland-qt-support
 
-          # nixorcist CLI wrapper
-          (pkgs.writeShellScriptBin "nixorcist" ''
-            exec /etc/nixos/nixorcist/nixorcist.sh "$@"
-          '')
+        ]
 
-          # Package toggle tooling
-          # Usage: nixos-comment discord   → disables discord system-wide
-          #        nixos-uncomment discord → re-enables it
-          (pkgs.writeShellScriptBin "nixos-comment" ''
-            set -euo pipefail
-            FILE="/etc/nixos/packages/disabled/disabled-packages.nix"
-            PKG="$1"
-            if [[ -z "$PKG" ]]; then echo "Usage: nixos-comment <package>"; exit 1; fi
-            grep -q "\"$PKG\"" "$FILE" && { echo "[!] $PKG already disabled"; exit 0; }
-            sed -i "/\[/a\  \"$PKG\"" "$FILE"
-            echo "[✓] Disabled $PKG"
-            echo "[*] Run: nixos-smart-rebuild"
-          '')
-
-          (pkgs.writeShellScriptBin "nixos-uncomment" ''
-            set -euo pipefail
-            FILE="/etc/nixos/packages/disabled/disabled-packages.nix"
-            PKG="$1"
-            if [[ -z "$PKG" ]]; then echo "Usage: nixos-uncomment <package>"; exit 1; fi
-            sed -i "/\"$PKG\"/d" "$FILE"
-            echo "[✓] Enabled $PKG"
-            echo "[*] Run: nixos-smart-rebuild"
-          '')
-
-          (pkgs.writeShellScriptBin "nixos-smart-rebuild" ''
-            exec /etc/nixos/scripts/nix-rebuild-smart.sh "$@"
-          '')
+        ++ lib.optionals features.nixorcist [
+          (pkgs.callPackage ../packages/nixorcist { })
         ];
     };
 }

@@ -13,7 +13,6 @@ with pkgs; [
   # =========================
   # Privacy-Focused Browsers
   # =========================
-  librewolf   # Firefox fork — hardened privacy and security defaults
   tor-browser # Tor Browser — anonymity via the Tor network
 
 ]

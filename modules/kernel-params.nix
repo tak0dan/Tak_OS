@@ -22,7 +22,6 @@
 
   boot.kernelParams = [
     "i915.enable_guc=3"   # enable GuC + HuC firmware
-    "i915.fastboot=1"     # faster display init
     "i915.enable_fbc=1"   # framebuffer compression (lower idle power)
   ];
 

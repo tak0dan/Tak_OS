@@ -6,4 +6,12 @@
   # "mongodb"
   # "telegram"
 
+  "discord"
+  "discord-canary"
+  "discord-development"
+  "discord-ptb"
+  "simplex-chat"
+  "vesktop"
+  "spotify"
+  "teams-for-linux"
 ]

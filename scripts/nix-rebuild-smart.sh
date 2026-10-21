@@ -249,6 +249,9 @@ _handle_network_sensitive_failures() {
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+# Refresh hardware-detected.nix so GPU and VM modules match the current machine.
+"${CONFIG_DIR}/scripts/detect-hardware.sh" || echo "Hardware detection failed; keeping the previous hardware-detected.nix"
+
 echo "Running nixos-rebuild switch --upgrade..."
 echo "--------------------------------------------------"
 

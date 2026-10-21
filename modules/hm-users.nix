@@ -2,41 +2,35 @@
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #
 # HM-USERS.NIX — Home Manager user profile declarations
-# ======================================================
-# Loaded when features.home-manager = true (set in configuration.nix).
-# Requires <home-manager/nixos> to be imported first (handled in configuration.nix).
+# =====================================================
+# Loaded when features.home-manager = true.
+# Requires <home-manager/nixos> to be imported first (handled by
+# modules/home-manager-layer.nix).
 #
-# Generates one home-manager profile per entry in features.home-manager-users.
-# To add a user: append their name to that list — everything else is derived.
-#
-# Each profile:
-#   • Sets home.username / home.homeDirectory from the name alone.
-#   • Sets home.stateVersion to match system.stateVersion — safe to override in home.nix.
-#   • Imports /home/<user>/.hm-local/home.nix    (preferred)
-#          or /home/<user>/.hm-local/default.nix  (fallback)
-#   • Falls back to a baseline (just git) when neither file exists.
-#   • home-manager only manages what home.nix explicitly declares;
-#     existing files are never touched unless listed there.
-#
-# The scaffold for ~/.hm-local/home.nix lives in modules/hm-home-scaffold.nix
-# and is written automatically by modules/hm-local-bootstrap.nix.
+# Generates one Home Manager profile per entry in features.home-manager-users.
+# Every imported file is repository-owned:
+#   • home/common.nix          — shared baseline
+#   • home/hypr-desktop.nix    — shared declarative Hyprland user config
+#   • home/<user>.nix          — per-user customisation
+# This keeps evaluation pure and portable across machines.
 
 { config, pkgs, lib, features, ... }:
 {
+  home-manager.extraSpecialArgs = { inherit features; };
+
   home-manager.users = lib.genAttrs features.home-manager-users (user:
     let
-      local  = "/home/${user}/.hm-local";
-      hmFile =
-        if builtins.pathExists (local + "/home.nix")    then local + "/home.nix"
-        else if builtins.pathExists (local + "/default.nix") then local + "/default.nix"
-        else null;
+      userFile = ../home + "/${user}.nix";
     in
     {
       home.username                  = user;
       home.homeDirectory             = "/home/${user}";
       home.stateVersion              = lib.mkDefault config.system.stateVersion;
       home.enableNixpkgsReleaseCheck = false;
-      imports                        = lib.optionals (hmFile != null) [ hmFile ];
-      home.packages                  = [ pkgs.git ]; # baseline — always present
+      imports = [
+        ../home/common.nix
+        ../home/hypr-desktop.nix
+        userFile
+      ];
     });
 }

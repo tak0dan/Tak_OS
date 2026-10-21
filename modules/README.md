@@ -34,18 +34,17 @@
 ```
 modules/
 │
+│── Architectural Hubs ────────────────────────────────────────
+├── manifest-wiring.nix        ← Public manifest wiring (_module.args, sddm)
+├── foundation.nix             ← Always-loaded baseline import hub
+├── feature-layer.nix          ← Always-imported feature module hub
+├── home-manager-layer.nix     ← Conditional Home Manager import hub
+├── hyprland-layer.nix         ← Conditional Hyprland desktop import hub
+├── branding-layer.nix         ← Conditional branding import hub
+├── generated-layer.nix        ← Conditional nixorcist-generated import hub
+│
 │── Hardware & Boot ──────────────────────────────────────────
-├── gpu.nix                    ← GPU profile dispatcher (reads features.kernelParams + features.gpu)
-├── amd-drivers.nix            ← AMD GPU userspace driver
-├── nvidia-drivers.nix         ← Nvidia standalone driver
-├── nvidia-prime-drivers.nix   ← Nvidia PRIME hybrid driver
-├── intel-drivers.nix          ← Intel GPU driver
 ├── hardware-graphics.nix      ← Mesa / VA-API / 32-bit OpenGL libs (always loaded)
-├── kernel-params.nix          ← Active kernel params (managed by gpu.nix)
-├── kernel-params-amd.nix      ← Kernel params for AMD systems
-├── kernel-params-nvidia.nix   ← Kernel params for Nvidia systems
-├── kernel-params-generic.nix  ← Generic / Intel kernel params
-├── kernel-params-thinkpad.nix ← ThinkPad T-series specific params
 ├── bootloader.nix             ← GRUB / systemd-boot configuration
 ├── grub-theme.nix             ← GRUB visual theme
 │
@@ -70,8 +69,10 @@ modules/
 │── Feature Modules ──────────────────────────────────────────
 ├── kde.nix                    ← Qt/KDE runtime (guarded by features.kde)
 ├── gaming.nix                 ← Steam + GameMode (guarded by features.steam)
+├── docker.nix                 ← Docker engine with latest nixpkgs major default
+├── mariadb.nix                ← Declarative MariaDB service wrapper
 ├── openssh.nix                ← SSH daemon (guarded by features.openssh)
-├── virtualbox.nix             ← VirtualBox host + Docker (guarded by features.virtualisation)
+├── virtualbox.nix             ← VirtualBox host (guarded by features.virtualisation)
 ├── flatpak.nix                ← Flatpak runtime + Flathub (guarded by features.flatpak)
 ├── window-managers.nix        ← Hyprland, bspwm, i3, xkb (loaded when features.hyprland)
 ├── portals.nix                ← XDG portals: screen share, file picker
@@ -85,7 +86,7 @@ modules/
 │
 │── Packages ─────────────────────────────────────────────────
 ├── system-packages.nix        ← Package assembly hub + kool.disabledPackages option
-├── all-packages.nix           ← Master import hub for all packages/ files
+├── all-packages.nix           ← Legacy package helper (not part of the active graph)
 │
 │── Home Manager ─────────────────────────────────────────────
 ├── hm-users.nix               ← Home Manager user profile declarations
@@ -108,15 +109,9 @@ modules/
 
 ### Hardware & Boot
 
-**Always loaded.** This group owns everything below the OS: kernel parameters,
-GPU driver selection, hardware acceleration, and the bootloader.
-
-`gpu.nix` is the central dispatcher for the GPU subsystem. It defines two
-custom NixOS options (`gpu.kernelParams` and `gpu.driver`) and uses them to
-conditionally import the correct kernel-params and driver sub-module. You
-never import the individual driver files directly — `gpu.nix` handles that.
-
-See [GPU Subsystem](#gpu-subsystem) for details.
+**Always loaded.** This group owns the bootloader and hardware-graphics base.
+Machine-specific driver and kernel policy belongs in the host hardware
+configuration, not in this shared module graph.
 
 ### Display & Login
 
@@ -139,8 +134,9 @@ rebuild error notification hook live here.
 
 ### Feature Modules
 
-These modules are imported based on feature flags or conditionally activate
-their configuration using the `features` attrset from `_module.args`.
+These modules are imported through architectural hubs and then either:
+- enter the graph conditionally, or
+- stay in the graph and activate themselves from `features.*`.
 
 Two import strategies are used:
 
@@ -148,12 +144,12 @@ Two import strategies are used:
 flag is `true`):
 
 ```nix
-# configuration.nix
-++ lib.optionals features.hyprland [
-  ./modules/window-managers.nix
-  ./modules/portals.nix
+# modules/hyprland-layer.nix
+imports = lib.optionals features.hyprland [
+  ./window-managers.nix
+  ./portals.nix
   # ...
-]
+];
 ```
 
 The module file is never evaluated when the flag is `false`.
@@ -210,7 +206,7 @@ it has no effect on any other module.
 
 ### \_module.args — Shared Channel
 
-`configuration.nix` injects two values into every module's argument list:
+`modules/manifest-wiring.nix` injects two values into every module's argument list:
 
 ```nix
 _module.args = { inherit features filterPkgs; };
@@ -232,9 +228,10 @@ Modules that do not need them simply omit them — they receive
 
 ### The features Attrset
 
-`features` is a plain Nix attribute set defined in the `let` block of
-`configuration.nix`. Its values are booleans or strings. Modules read it
-to branch their configuration:
+`features` is the canonical normalized attribute set defined in the `let` block
+of `configuration.nix`. Its values are booleans, strings, or structured
+sub-attrs. A higher-level `graph` declaration can seed many of those values, but
+modules still read `features` as their stable internal interface:
 
 ```nix
 programs.steam.enable = features.steam;
@@ -292,32 +289,6 @@ use the `options` / `config` split form:
 `system-packages.nix` uses this form to expose the `kool.disabledPackages`
 option that `configuration.nix` sets. All other modules use the flat form
 (just a set of `config.*` attributes) since they only set built-in options.
-
----
-
-## GPU Subsystem
-
-`gpu.nix` defines two custom options:
-
-| Option | Values | What it controls |
-|--------|--------|-----------------|
-| `gpu.kernelParams` | `"generic"` `"thinkpad"` `"nvidia"` `"amd"` | Boot-time kernel tuning sub-module |
-| `gpu.driver` | `"none"` `"amd"` `"intel"` `"nvidia"` `"nvidia-prime"` | Userspace driver sub-module |
-
-These are set in `configuration.nix` by wiring the feature flags:
-
-```nix
-gpu.kernelParams = features.kernelParams;
-gpu.driver       = features.gpu;
-```
-
-`gpu.nix` then imports the matching sub-module internally. You never import
-`amd-drivers.nix` or `nvidia-drivers.nix` directly.
-
-> ⚠️ The kernel param profiles (`-amd`, `-nvidia`, `-thinkpad`) are tuned for
-> specific hardware. The ThinkPad profile targets the T480. **Create your own
-> profile** rather than using a preset blindly — wrong params can cause kernel
-> panics or poor performance.
 
 ---
 

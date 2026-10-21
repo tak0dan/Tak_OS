@@ -1,6 +1,0 @@
-last_fetch_epoch=1773315067
-last_fetch_human=2026-03-12 12:31:07 CET
-last_all_epoch=1773313968
-last_all_human=2026-03-12 12:12:48 CET
-last_fetch_duration_seconds=1521
-recommended_refresh_seconds=604800

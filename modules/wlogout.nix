@@ -6,10 +6,8 @@
 #
 # Loaded exclusively when features.hyprland = true (see configuration.nix).
 #
-# Deploys the wlogout theme selected by features.hypr.logoutTheme to
-# ~/.config/wlogout/ for every user in features.home-manager-users.
-# The deployment runs on every rebuild, keeping the config in sync with the
-# chosen profile.
+# Validates the selected wlogout themes. Actual per-user file management is
+# handled declaratively via Home Manager.
 #
 # Available profiles  (assets: /etc/nixos/assets/wlogout/<profile>/):
 #   "default"     — Rounded icon buttons, wallust colour import (LinuxBeginnings)
@@ -21,7 +19,7 @@
 # modules/system-packages.nix; this module handles only the config files.
 #
 # =============================================================================
-{ lib, pkgs, features, ... }:
+{ lib, features, ... }:
 
 lib.mkIf (features.hyprland && features.hypr.logout)
 (
@@ -41,8 +39,15 @@ lib.mkIf (features.hyprland && features.hypr.logout)
   in
   {
     assertions =
-      # Validate global default.
       [{
+        assertion = !features.hypr.logout || features.home-manager;
+        message = ''
+          Wlogout theme deployment is managed declaratively via Home Manager.
+          Enable features.home-manager or disable features.hypr.logout.
+        '';
+      }
+      # Validate global default.
+      {
         assertion = builtins.elem defaultTheme validThemes;
         message   = ''
           features.hypr.logoutTheme must be one of:
@@ -62,28 +67,5 @@ lib.mkIf (features.hyprland && features.hypr.logout)
           '';
         }
       ) features.home-manager-users;
-
-    system.activationScripts.wlogout-theme = {
-      deps = [];
-      text = lib.concatMapStrings (user:
-        let
-          profile = userTheme user;
-          dest    = "/home/${user}/.config/wlogout";
-        in ''
-          echo "[wlogout] Deploying theme '${profile}' for ${user}..."
-          # Always ensure ~/.config exists and is user-owned before copying.
-          # If a previous (failed) run created it as root, the conditional
-          # guard would have been skipped — so we unconditionally fix it here.
-          _hm_cfg="/home/${user}/.config"
-          mkdir -p "$_hm_cfg"
-          chown ${user}:users "$_hm_cfg"
-          chmod 700 "$_hm_cfg"
-          rm -rf ${dest}
-          cp -r ${themeDir profile} ${dest}
-          chown -R ${user}:users ${dest} 2>/dev/null || true
-          chmod -R u+w ${dest}
-        ''
-      ) features.home-manager-users;
-    };
   }
 )

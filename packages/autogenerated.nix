@@ -6,7 +6,6 @@ with pkgs; [
     bat
     blueman
     discover-overlay
-    docker
     eclipse-mat
     eclipses.eclipse-committers
     eclipses.eclipse-cpp
@@ -23,7 +22,7 @@ with pkgs; [
     krita
     libsForQt5.qtmultimedia
     nodejs
-    perl5Packages.PlackMiddlewareFixMissingBodyInRedirect
+# AUTO-COMMENTED (perl5Packages):     perl5Packages.PlackMiddlewareFixMissingBodyInRedirect
     pnpm
     python3
     python313Packages.ifconfig-parser

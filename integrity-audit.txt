@@ -98,7 +98,6 @@ ISSUE #3 — HIGH
 Title:   programs.gamemode conflicts with services.power-profiles-daemon
 Files:   /etc/nixos/modules/gaming.nix (gamemode)
          /etc/nixos/modules/kernel-params-thinkpad.nix (power-profiles-daemon)
-         /etc/nixos/modules/gameon.nix (sysctl-tweaks, zram, low-latency-audio)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Root cause:

@@ -77,7 +77,7 @@ let
     # "nvidia"    → modules/kernel-params-nvidia.nix    Discrete Nvidia (DRM, initrd)
     # "amd"       → modules/kernel-params-amd.nix       AMD (iommu, microcode, early load)
     #
-    kernelParams = "generic";
+    kernelParams = "thinkpad";
 
     # =========================================================================
     # 🎮 GPU DRIVER PROFILE
@@ -107,7 +107,7 @@ let
     #
     # All credits to yunfachi. Original dots: https://github.com/yunfachi/NixOwOS
     #
-    uwu = true; #<--- I know you want to enable it, you femboy.
+    uwu = false; #<--- I know you want to enable it, you femboy.
     uwuPackages = false;
     #~~~~~~~~~~~~~~~~~~
     #                 |
@@ -323,57 +323,7 @@ let
     # ╚═══════════════════════════════════════════════════════════════════════╝
     # =========================================================================
 
-    # ╔══════════════════════════════════════════════════════════════╗
-    # ║ 🎮 GAMEON — GLF-OS-inspired gaming stack                    ║
-    # ╚══════════════════════════════════════════════════════════════╝
-    # Master toggle: set enable = true to activate everything below.
-    # Set enable = false to skip the module entirely — zero system changes.
-    #
-    # Sources for out-of-tree kernel modules (cloned locally — no fetchFromGitHub):
-    #   /etc/nixos/assets/kernel-modules/hid-fanatecff/
-    #   /etc/nixos/assets/kernel-modules/new-lg4ff/
-    #
-    gameon = {
-      enable = false;   # 🎯 MASTER SWITCH — set to true to activate the entire stack
 
-      # ── Compatibility Layer ─────────────────────────────────────────────
-      compat = {
-        wine     = true;   # Wine WoW64 Staging + winetricks
-        protonGE = true;   # proton-ge-bin as Steam extra compat tool
-      };
-
-      # ── Game Launchers ──────────────────────────────────────────────────
-      launchers = true;    # Lutris / Heroic / Faugus / UMU / Oversteer
-
-      # ── Visual & Performance ────────────────────────────────────────────
-      graphics = {
-        overlays  = true;   # MangoHud / GOverlay / vkBasalt + compat symlinks
-        # __TAKOS_FEATURE_GAMEON_STREAMING_START__
-        streaming = false;  # Full GStreamer codec pack + noisetorch  ⚠️ HEAVY
-        # __TAKOS_FEATURE_GAMEON_STREAMING_END__
-      };
-
-      # ── Hardware / Input ────────────────────────────────────────────────
-      hardware = {
-        controllers = true;   # xone / xpadneo / hid-tmff2; ratbagd; piper;
-                              #   opentabletdriver; steam-hardware; DualSense udev
-        rgb         = true;   # OpenRGB service (all-plugins build)
-        remap       = true;   # input-remapper daemon + polkit + autoload unit
-
-        wheels = {
-          fanatec  = true;   # ⚠️ local src — hid-fanatecff kernel module
-          logitech = true;   # ⚠️ local src — new-lg4ff kernel module
-        };
-      };
-
-      # ── System Optimisations ────────────────────────────────────────────
-      system = {
-        sysctl      = true;   # Gaming sysctl + Mesa shader-cache env vars
-        zram        = true;   # zram-swap (zstd, 25 % RAM, priority 5)
-        ioScheduler = true;   # BFQ I/O scheduler udev rule on all block devices
-        audio       = true;   # Low-latency PipeWire (256-sample quantum + usbcore.autosuspend=-1)
-      };
-    };
 
     # =========================================================================
     # 🎮 STEAM / GAMING
@@ -403,7 +353,7 @@ let
     # explicitly instead of enabled by default during installation.
     #
     # __TAKOS_FEATURE_VIRTUALISATION_START__
-    virtualisation = false;
+    virtualisation = true;
     # __TAKOS_FEATURE_VIRTUALISATION_END__
 
     # =========================================================================
@@ -419,10 +369,11 @@ let
     # =========================================================================
     # 🤖 NIXORCIST   (Work in progress)
     # =========================================================================
-    # Custom package automation system (see /etc/nixos/nixorcist/).
-    # Exposes the `nixorcist` CLI and loads auto-generated package lists.
-    # → nixorcist/generated/all-packages.nix
-    # → modules/system-packages.nix  (nixorcist CLI wrapper)
+    # Package/profile manager (nixorcist-py, pinned in packages/nixorcist/).
+    # Exposes the `nixorcist` / `nist` CLI. It edits the declarations in this
+    # tree directly, so no generated package list is imported.
+    # → packages/nixorcist/default.nix   (package expression)
+    # → modules/system-packages.nix      (nixorcist CLI wrapper)
     #
     # __TAKOS_FEATURE_NIXORCIST_START__
     nixorcist = false;
@@ -523,6 +474,7 @@ in
      #                   nvidia-drivers.nix, nvidia-prime-drivers.nix
      # Activation is controlled by gpu.kernelParams and gpu.driver below.
      ./modules/gpu.nix
+     ./modules/hardware-detect.nix  # resolves "auto" + wires detected GPU/VM modules
 
      # --- Display / Login ---
      ./modules/sddm.nix #<--- Idk, this shit ocasionally works, but don't really rely on it :)
@@ -566,9 +518,6 @@ in
 
      # --- GitHub Copilot CLI (install / cleanup on every rebuild) ---
      ./modules/copilot-cli.nix
-
-     # --- Auto-generated package lists (managed by nixorcist) ---
-     ./nixorcist/generated/all-packages.nix
    ]
 
    # Declarative user environment — dotfiles, user packages, services.
@@ -617,10 +566,6 @@ in
 
    ++ lib.optionals (!features.uwu) [
      ./modules/default-fastfetch.nix  # Plain NixOS logo
-   ]
-
-   ++ lib.optionals features.gameon.enable [
-     ./modules/gameon.nix      # GLF-OS-inspired gaming stack (all sub-features inside)
    ];
 
 
@@ -630,11 +575,9 @@ in
 
 
   # ── Hardware profile wiring ─────────────────────────────────────────────────
-  # Connects the feature flags above to gpu.nix's custom options.
-  # These are the only two "wiring" lines that belong here rather than a module
-  # because gpu.nix defines these options and cannot set its own options.
-  gpu.kernelParams = features.kernelParams;
-  gpu.driver       = features.gpu;
+  # features.kernelParams / features.gpu may be "auto": modules/hardware-detect.nix
+  # then takes them from hardware-detected.nix (scripts/detect-hardware.sh) and
+  # wires the matching gpu.* options and VM-guest modules.
 
 
   # ===========================================================================
@@ -651,7 +594,8 @@ in
   #     git
   #   ];
   #
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [
+    (pkgs.callPackage ./packages/nixorcist { })
     # put your packages here
   ];
 
@@ -678,6 +622,6 @@ in
   # DO NOT CHANGE unless you are doing a NixOS release upgrade and know
   # exactly what stateful things will be migrated.
   #
-  system.stateVersion = "25.11";
+  system.stateVersion = "26.05";
 
 }

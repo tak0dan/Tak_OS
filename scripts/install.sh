@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
-# Tak_OS · install.sh v4 — staged installer with discovered-user export
+# Tak_OS · install.sh v5 — automatic installer with optional interactive edit
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #
-# Phases:
-#   1  Channel upgrade
-#   2  TUI host / GPU review + discovered-user export preview
-#   3  Stage repo copy + remap repo user data + generate user hub + hostname + GPU
-#   4  Deploy staged copy → /etc/nixos
-#   5  Adaptive build
-#   6  Switch
-#   7  Optional restore of auto-commented packages
+# Default (automatic, no prompts): detects hardware (CPU, GPU, VM guest),
+# virtualisation support and existing users, then stages and installs.
+# GPU/kernel values are written as "auto", so the build resolves them through
+# modules/hardware-detect.nix from the detection made on this machine.
 #
-# Usage:  sudo bash /path/to/Tak_OS/scripts/install.sh
+# --edit   Review the detected values in the TUI first and change any of them.
+# --dry-run Stage the configuration and stop before deploy/build/switch.
+#           Needs no root; the staged copy is kept and its path is printed.
+#
+# Phases:
+#   1  Channel upgrade                          (skipped in --dry-run)
+#   2  Detection (auto) or review TUI (--edit)
+#   3  Stage repo copy + remap users + detected hardware + features
+#   4  Deploy staged copy → /etc/nixos         (skipped in --dry-run)
+#   5  Adaptive build                           (skipped in --dry-run)
+#   6  Switch                                   (skipped in --dry-run)
+#   7  Restore auto-commented packages          (--edit asks; auto prints a hint)
+#
+# Usage:
+#   sudo bash /path/to/Tak_OS/scripts/install.sh            # automatic
+#   sudo bash /path/to/Tak_OS/scripts/install.sh --edit     # review first
+#        bash /path/to/Tak_OS/scripts/install.sh --dry-run  # stage only
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,6 +32,7 @@ TARGET_DIR="/etc/nixos"
 TARGET_USERS_DIR="${TARGET_DIR}/users-declared"
 USERS_DIR="${PROJECT_DIR}/users-declared"
 DISCOVER_USERS_SCRIPT="${PROJECT_DIR}/scripts/discover-users.sh"
+DETECT_HARDWARE_SCRIPT="${PROJECT_DIR}/scripts/detect-hardware.sh"
 STAGE_DIR=""
 TEMP_ROOT=""
 
@@ -35,11 +48,28 @@ warn()  { printf "${YELLOW}[!]${RESET} %s\n" "$*"; }
 die()   { printf "${RED}[✗]${RESET} %s\n"   "$*" >&2; exit 1; }
 step()  { printf "\n${BOLD}${CYAN}──── %s ────${RESET}\n" "$*"; }
 cleanup() {
+  # A dry run keeps the staged copy so it can be inspected.
+  [[ "${DRY_RUN}" == "true" ]] && return 0
   [[ -n "${TEMP_ROOT:-}" && -d "${TEMP_ROOT}" ]] && rm -rf "${TEMP_ROOT}"
 }
 trap cleanup EXIT
 
-[[ "${EUID}" -ne 0 ]] && die "Run as root: sudo $0"
+# ── Arguments ────────────────────────────────────────────────────────────────
+MODE="auto"
+DRY_RUN="false"
+for arg in "$@"; do
+  case "$arg" in
+    --edit)     MODE="edit" ;;
+    --auto)     MODE="auto" ;;
+    --dry-run)  DRY_RUN="true" ;;
+    -h|--help)  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)          die "Unknown option: $arg (see --help)" ;;
+  esac
+done
+
+if [[ "$DRY_RUN" != "true" && "${EUID}" -ne 0 ]]; then
+  die "Run as root: sudo $0  (or add --dry-run to stage without deploying)"
+fi
 
 if   command -v whiptail &>/dev/null; then TUI="whiptail"
 elif command -v dialog   &>/dev/null; then TUI="dialog"
@@ -104,54 +134,71 @@ tui_menu() {
 
 REPO_VERSION="$(grep -oP 'stateVersion\s*=\s*"\K[^"]+' "${PROJECT_DIR}/configuration.nix" | head -1)"
 [[ -x "$DISCOVER_USERS_SCRIPT" ]] || chmod +x "$DISCOVER_USERS_SCRIPT" 2>/dev/null || true
+[[ -x "$DETECT_HARDWARE_SCRIPT" ]] || chmod +x "$DETECT_HARDWARE_SCRIPT" 2>/dev/null || true
 
-FEATURE_DEFAULTS=(
-  "KDE=true"
-  "STEAM=false"
-  "VIRTUALISATION=false"
-  "FLATPAK=true"
-  "NIXORCIST=false"
-  "COPILOT=false"
-  "GAMEON_STREAMING=false"
+# ── Feature flags ────────────────────────────────────────────────────────────
+# Keys are the marker names in configuration.nix (# __TAKOS_FEATURE_<KEY>_START__);
+# each key is also the lowercase attribute name under `features`.
+FEATURE_ORDER=(KDE STEAM VIRTUALISATION FLATPAK NIXORCIST COPILOT)
+declare -A FEATURES=(
+  [KDE]=true
+  [STEAM]=false
+  [VIRTUALISATION]=false     # auto mode replaces this with hardware support
+  [FLATPAK]=true
+  [NIXORCIST]=false
+  [COPILOT]=false
 )
 
-feature_value() {
-  local key="$1" kv
-  for kv in "${FEATURE_DEFAULTS[@]}"; do
-    [[ "${kv%%=*}" == "$key" ]] && { echo "${kv#*=}"; return 0; }
-  done
-  return 1
-}
-
+# Writes `features.<name> = <value>;` into each marker block.
 apply_feature_markers() {
-  local cfg="$1"
-  python3 - "$cfg" <<'PY'
-import re, sys
-path = sys.argv[1]
-text = open(path).read()
-replacements = {
-    'KDE': 'kde = true;',
-    'STEAM': 'steam = false;',
-    'VIRTUALISATION': 'virtualisation = false;',
-    'FLATPAK': 'flatpak = true;',
-    'NIXORCIST': 'nixorcist = false;',
-    'COPILOT': 'copilot = false;',
-    'GAMEON_STREAMING': 'streaming = false;'
-}
-for key, decl in replacements.items():
-    start = f'# __TAKOS_FEATURE_{key}_START__'
-    end = f'# __TAKOS_FEATURE_{key}_END__'
-    pattern = re.compile(re.escape(start) + r'\n.*?\n\s*' + re.escape(end), re.S)
-    repl = f'{start}\n    {decl}\n    {end}' if key not in ('GAMEON_STREAMING',) else f'{start}\n        {decl}\n        {end}'
-    text, n = pattern.subn(repl, text, count=1)
+  local cfg="$1"; shift
+  python3 - "$cfg" "$@" <<'PY'
+import re
+import sys
+
+path, pairs = sys.argv[1], sys.argv[2:]
+text = open(path, encoding="utf-8").read()
+for pair in pairs:
+    key, value = pair.split("=", 1)
+    start = f"# __TAKOS_FEATURE_{key}_START__"
+    end = f"# __TAKOS_FEATURE_{key}_END__"
+    pattern = re.compile(re.escape(start) + r"\n.*?\n\s*" + re.escape(end), re.S)
+    replacement = f"{start}\n    {key.lower()} = {value};\n    {end}"
+    text, n = pattern.subn(lambda _m: replacement, text, count=1)
     if n != 1:
-        raise SystemExit(f'Missing or invalid marker block for {key}')
-open(path, 'w').write(text)
+        raise SystemExit(f"Missing or invalid marker block for {key}")
+open(path, "w", encoding="utf-8").write(text)
 PY
 }
 
-VIRT_FEATURE="$(feature_value VIRTUALISATION)"
+# ── Hardware detection ───────────────────────────────────────────────────────
+# Reads one `key = "value";` line from a generated hardware-detected.nix.
+detected_value() {
+  sed -n "s/^  $2 = \"\(.*\)\";/\1/p" "$1" | head -1
+}
 
+# Runs scripts/detect-hardware.sh into $1 and loads the DET_* variables.
+run_detection() {
+  local out="$1"
+  "$DETECT_HARDWARE_SCRIPT" "$out" >/dev/null || die "Hardware detection failed."
+  DET_CPU="$(detected_value "$out" cpu)"
+  DET_GUEST="$(detected_value "$out" guest)"
+  DET_KERNEL="$(detected_value "$out" kernelParams)"
+  DET_DRIVER="$(detected_value "$out" driver)"
+  DET_GPUS="$(sed -n 's/^  gpus = \[ \(.*\) \];/\1/p' "$out" | tr -d '"')"
+  DET_VIRT_CAPABLE="false"
+  if grep -q '^  kernelModules = \[ "kvm-' "$out"; then DET_VIRT_CAPABLE="true"; fi
+}
+
+describe_detection() {
+  info "CPU        : ${DET_CPU}"
+  info "GPU        : ${DET_GPUS:-none}"
+  info "VM guest   : ${DET_GUEST}"
+  info "Profile    : kernelParams=${DET_KERNEL}  driver=${DET_DRIVER}"
+  info "Virt host  : ${DET_VIRT_CAPABLE} (CPU virtualisation extensions on bare metal)"
+}
+
+# ── Users ────────────────────────────────────────────────────────────────────
 load_discovered_users() {
   DISCOVERED_USERS=()
   declare -gA DISC_DESC=() DISC_SHELL=() DISC_ADMIN=() DISC_NET=() DISC_VIRT=() DISC_AUDIO=() DISC_VIDEO=() DISC_INPUT=() DISC_PLUGDEV=()
@@ -215,8 +262,9 @@ user_mapping_summary() {
   printf '%s' "${out:-"(none)"}"
 }
 
+# ── Staging ──────────────────────────────────────────────────────────────────
 stage_project_copy() {
-  TEMP_ROOT="$(mktemp -d)"
+  [[ -n "$TEMP_ROOT" ]] || TEMP_ROOT="$(mktemp -d)"
   STAGE_DIR="${TEMP_ROOT}/nixos-stage"
   rsync -a --delete "${PROJECT_DIR}/" "${STAGE_DIR}/"
   USERS_DIR="${STAGE_DIR}/users-declared"
@@ -267,142 +315,6 @@ print(changed)
 PY
 }
 
-load_discovered_users
-load_repo_users
-build_user_mapping
-
-printf "\n${BOLD}${CYAN}"
-cat << 'BANNER'
- ████████╗ █████╗ ██╗  ██╗       ██████╗ ███████╗
-    ██╔══╝██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
-    ██║   ███████║█████╔╝       ██║   ██║███████╗
-    ██║   ██╔══██║██╔═██╗       ██║   ██║╚════██║
-    ██║   ██║  ██║██║  ██╗█████╗╚██████╔╝███████║
-    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═══╝ ╚═════╝ ╚══════╝
-      Installer v4 — declarative user discovery
-           Declarative. Modular. Yours.
-BANNER
-printf "${RESET}\n  NixOS version  : %s\n\n" "$REPO_VERSION"
-
-step "Phase 1: Channel upgrade"
-nix-channel --add "https://nixos.org/channels/nixos-${REPO_VERSION}" nixos
-nix-channel --add \
-  "https://github.com/nix-community/home-manager/archive/release-${REPO_VERSION}.tar.gz" \
-  home-manager
-nix-channel --update
-nixos-rebuild build 2>/dev/null && ok "Baseline build OK." \
-  || warn "Baseline build failed — continuing (expected on fresh systems)."
-ok "Phase 1 complete."
-
-step "Phase 2: Install review (TUI)"
-INSTALL_HOST="$(hostname -s 2>/dev/null || hostname)"
-GPU_KERNEL="generic"; GPU_DRIVER="none"
-EXTRA_ENABLE="false"
-
-_lhost()  { echo "$INSTALL_HOST"; }
-_lgpu()   { echo "${GPU_KERNEL}/${GPU_DRIVER}"; }
-_lusers() { [[ ${#DISCOVERED_USERS[@]} -eq 0 ]] && echo "(none)" || echo "${DISCOVERED_USERS[*]}"; }
-_lextra() { echo "$EXTRA_ENABLE"; }
-
-scr_hostname() {
-  local h; while true; do
-    h="$(tui_input "Hostname" "System hostname:" "$INSTALL_HOST")"
-    [[ "$h" =~ ^[a-zA-Z0-9._-]+$ ]] && { INSTALL_HOST="$h"; return; }
-    tui_msg "Error" "Invalid hostname — letters, digits, dots, hyphens only."
-  done
-}
-
-scr_gpu() {
-  GPU_KERNEL="$(tui_radio "GPU — Kernel Profile" "Kernel parameter profile:" \
-    "generic"  "Safe default — any hardware (recommended)" "$([[ $GPU_KERNEL == generic  ]] && echo ON || echo OFF)" \
-    "thinkpad" "ThinkPad T480 — i915 GuC/HuC + Intel microcode" "$([[ $GPU_KERNEL == thinkpad ]] && echo ON || echo OFF)" \
-    "amd"      "AMD — amd_iommu + ppfeaturemask + AMD microcode" "$([[ $GPU_KERNEL == amd     ]] && echo ON || echo OFF)" \
-    "nvidia"   "Nvidia — DRM modesetting + nvidia initrd" "$([[ $GPU_KERNEL == nvidia  ]] && echo ON || echo OFF)")"
-  GPU_DRIVER="$(tui_radio "GPU — Driver" "GPU driver to load:" \
-    "none"         "No driver (VM / headless / Intel built-in)" "$([[ $GPU_DRIVER == none         ]] && echo ON || echo OFF)" \
-    "intel"        "Intel integrated" "$([[ $GPU_DRIVER == intel        ]] && echo ON || echo OFF)" \
-    "amd"          "AMD" "$([[ $GPU_DRIVER == amd          ]] && echo ON || echo OFF)" \
-    "nvidia"       "Nvidia discrete" "$([[ $GPU_DRIVER == nvidia       ]] && echo ON || echo OFF)" \
-    "nvidia-prime" "Nvidia + Intel PRIME hybrid" "$([[ $GPU_DRIVER == nvidia-prime ]] && echo ON || echo OFF)")"
-}
-
-scr_users() {
-  load_discovered_users
-  local preview="" u role
-  for u in "${DISCOVERED_USERS[@]}"; do
-    role="user"
-    [[ "${DISC_ADMIN[$u]:-false}" == "true" ]] && role="admin"
-    preview+="- ${u} (${DISC_DESC[$u]:-$u}) :: shell=${DISC_SHELL[$u]:-bash} role=${role} net=${DISC_NET[$u]:-false} virt=${DISC_VIRT[$u]:-false} audio=${DISC_AUDIO[$u]:-false} video=${DISC_VIDEO[$u]:-false} input=${DISC_INPUT[$u]:-false} plugdev=${DISC_PLUGDEV[$u]:-false}"$'\n'
-  done
-  tui_msg "Discovered Users" "Tak_OS now uses discovered existing users instead of manual user creation.\n\nCurrent discovered users:\n${preview}"
-}
-
-scr_extra() {
-  if tui_yesno "Extra Users" \
-"Enable extra-users.nix?
-Creates users-declared/extra-users.nix in the staged install copy — edit for full users.users.<name> control.
-Current: $(_lextra)"; then
-    EXTRA_ENABLE="true"
-  else
-    EXTRA_ENABLE="false"
-  fi
-}
-
-scr_review() {
-  local _users="${DISCOVERED_USERS[*]:-—}"
-  local _repo_users="${REPO_USERS[*]:-(none detected)}"
-  local _mapping; _mapping="$(user_mapping_summary)"
-  tui_msg "Review" \
-"Hostname       : ${INSTALL_HOST}
-
-GPU            : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
-NixOS          : ${REPO_VERSION}
-Virtualisation : ${VIRT_FEATURE}
-
-Repo users     : ${_repo_users}
-Discovered users: ${_users}
-User remap     :
-${_mapping}
-Extra nix      : ${EXTRA_ENABLE}
-
-Manual user creation has been removed from the installer.
-Existing users will be exported into separate declarations and linked through the users hub.
-Your repository working tree is left untouched; replacements happen only in the staged install copy."
-}
-
-_APPLIED="false"
-while true; do
-  _choice="$(tui_menu "Tak_OS Installer v4" \
-    "Review detected system state. Select 'Apply' when ready." \
-    "hostname" "Hostname         [$(_lhost)]"   \
-    "gpu"      "GPU / Kernel     [$(_lgpu)]"    \
-    "users"    "Detected Users   [$(_lusers)]"  \
-    "extra"    "Extra users.nix  [$(_lextra)]"  \
-    "review"   "Review summary"                 \
-    "apply"    "Apply & Install"                \
-    "quit"     "Quit / Abort")"
-  case "$_choice" in
-    hostname) scr_hostname ;;
-    gpu)      scr_gpu ;;
-    users)    scr_users ;;
-    extra)    scr_extra ;;
-    review)   scr_review ;;
-    apply)
-      [[ ${#DISCOVERED_USERS[@]} -eq 0 ]] && {
-        tui_msg "Error" "No existing users were discovered. Create a real user first or fix discovery logic."; continue; }
-      scr_review
-      tui_yesno "Confirm" "Proceed with installation?" || continue
-      _APPLIED="true"; break ;;
-    quit) die "Aborted by user." ;;
-  esac
-done
-[[ "$_APPLIED" != "true" ]] && die "Nothing applied."
-
-step "Phase 3: Generating configuration"
-stage_project_copy
-rewrite_repo_user_data "${STAGE_DIR}" >/dev/null
-apply_feature_markers "${STAGE_DIR}/configuration.nix"
-
 write_user_file() {
   local name="$1" desc="$2" shell="$3" is_admin="$4"
   local net="$5" virt="$6" audio="$7" video="$8" input="$9" plugdev="${10}"
@@ -438,41 +350,29 @@ NIX
   info "Wrote staged ${USERS_DIR}/${name}.nix"
 }
 
-for u in "${DISCOVERED_USERS[@]}"; do
-  write_user_file "$u" \
-    "${DISC_DESC[$u]:-$u}" \
-    "${DISC_SHELL[$u]:-bash}" \
-    "${DISC_ADMIN[$u]:-false}" \
-    "${DISC_NET[$u]:-true}" \
-    "${DISC_VIRT[$u]:-false}" \
-    "${DISC_AUDIO[$u]:-false}" \
-    "${DISC_VIDEO[$u]:-false}" \
-    "${DISC_INPUT[$u]:-false}" \
-    "${DISC_PLUGDEV[$u]:-false}"
-done
+write_user_files() {
+  local u
+  for u in "${DISCOVERED_USERS[@]}"; do
+    write_user_file "$u" \
+      "${DISC_DESC[$u]:-$u}" \
+      "${DISC_SHELL[$u]:-bash}" \
+      "${DISC_ADMIN[$u]:-false}" \
+      "${DISC_NET[$u]:-true}" \
+      "${DISC_VIRT[$u]:-false}" \
+      "${DISC_AUDIO[$u]:-false}" \
+      "${DISC_VIDEO[$u]:-false}" \
+      "${DISC_INPUT[$u]:-false}" \
+      "${DISC_PLUGDEV[$u]:-false}"
+  done
 
-if [[ "$EXTRA_ENABLE" == "true" ]]; then
-  _extra="${USERS_DIR}/extra-users.nix"
-  [[ ! -f "$_extra" ]] || [[ ! -s "$_extra" ]] && cat > "$_extra" << 'NIX'
-# ===========================================================
-#  Tak_OS — extra (fully manual) user declarations
-# ===========================================================
-{ pkgs, lib, ... }:
-{
-  # users.users.guest = { ... };
-}
-NIX
-  info "Extra-users.nix ready at ${USERS_DIR}/extra-users.nix"
-fi
+  {
+    printf '# Generated by Tak_OS installer/helper\n[ '
+    for u in "${DISCOVERED_USERS[@]}"; do printf '"%s" ' "$u"; done
+    printf ']\n'
+  } > "${USERS_DIR}/user-list.nix"
+  info "Wrote ${USERS_DIR}/user-list.nix"
 
-{
-  printf '# Generated by Tak_OS installer/helper\n[ '
-  for u in "${DISCOVERED_USERS[@]}"; do printf '"%s" ' "$u"; done
-  printf ']\n'
-} > "${USERS_DIR}/user-list.nix"
-info "Wrote ${USERS_DIR}/user-list.nix"
-
-cat > "${USERS_DIR}/default.nix" << 'NIX'
+  cat > "${USERS_DIR}/default.nix" << 'NIX'
 # Generated by Tak_OS installer — users hub
 { ... }:
 {
@@ -482,31 +382,205 @@ cat > "${USERS_DIR}/default.nix" << 'NIX'
 }
 NIX
 
-{
-  printf '# Generated by Tak_OS installer — aggregated imports\n{ ... }:\n{\n  imports = [\n'
-  for u in "${DISCOVERED_USERS[@]}"; do printf '    ./%s.nix\n' "$u"; done
-  [[ "$EXTRA_ENABLE" == "true" ]] && printf '    ./extra-users.nix\n'
-  printf '  ];\n}\n'
-} > "${USERS_DIR}/user-modules.nix"
-info "Wrote ${USERS_DIR}/default.nix and ${USERS_DIR}/user-modules.nix"
+  {
+    printf '# Generated by Tak_OS installer — aggregated imports\n{ ... }:\n{\n  imports = [\n'
+    for u in "${DISCOVERED_USERS[@]}"; do printf '    ./%s.nix\n' "$u"; done
+    printf '  ];\n}\n'
+  } > "${USERS_DIR}/user-modules.nix"
+  info "Wrote ${USERS_DIR}/default.nix and ${USERS_DIR}/user-modules.nix"
+}
+
+# ── Banner ───────────────────────────────────────────────────────────────────
+printf "\n${BOLD}${CYAN}"
+cat << 'BANNER'
+ ████████╗ █████╗ ██╗  ██╗       ██████╗ ███████╗
+    ██╔══╝██╔══██╗██║ ██╔╝      ██╔═══██╗██╔════╝
+    ██║   ███████║█████╔╝       ██║   ██║███████╗
+    ██║   ██╔══██║██╔═██╗       ██║   ██║╚════██║
+    ██║   ██║  ██║██║  ██╗█████╗╚██████╔╝███████║
+    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═══╝ ╚═════╝ ╚══════╝
+      Installer v5 — automatic, detection-driven
+           Declarative. Modular. Yours.
+BANNER
+printf "${RESET}\n  NixOS version  : %s\n  Mode           : %s%s\n\n" \
+  "$REPO_VERSION" "$MODE" "$([[ $DRY_RUN == true ]] && echo ' (dry run)')"
+
+# Discovery and mapping run before any prompt or staging.
+load_discovered_users
+load_repo_users
+build_user_mapping
+
+# ── Phase 1 ──────────────────────────────────────────────────────────────────
+TEMP_ROOT="$(mktemp -d)"
+step "Phase 1: Channel upgrade"
+if [[ "$DRY_RUN" == "true" ]]; then
+  info "Skipped in dry run."
+else
+  nix-channel --add "https://nixos.org/channels/nixos-${REPO_VERSION}" nixos
+  nix-channel --add \
+    "https://github.com/nix-community/home-manager/archive/release-${REPO_VERSION}.tar.gz" \
+    home-manager
+  nix-channel --update
+  nixos-rebuild build 2>/dev/null && ok "Baseline build OK." \
+    || warn "Baseline build failed — continuing (expected on fresh systems)."
+fi
+ok "Phase 1 complete."
+
+# ── Phase 2 ──────────────────────────────────────────────────────────────────
+step "Phase 2: Detection"
+INSTALL_HOST="$(hostname -s 2>/dev/null || hostname)"
+DETECTED_FILE="${TEMP_ROOT}/hardware-detected.nix"
+run_detection "$DETECTED_FILE"
+describe_detection
+
+GPU_KERNEL="$DET_KERNEL"
+GPU_DRIVER="$DET_DRIVER"
+FEATURES[VIRTUALISATION]="$([[ "$DET_VIRT_CAPABLE" == "true" ]] && echo true || echo false)"
+
+[[ ${#DISCOVERED_USERS[@]} -eq 0 ]] && \
+  die "No existing users were discovered. Create a real user first, then run the installer again."
+ok "Detected ${#DISCOVERED_USERS[@]} user(s): ${DISCOVERED_USERS[*]}"
+
+# ── Edit mode (TUI) ──────────────────────────────────────────────────────────
+_lhost()  { echo "$INSTALL_HOST"; }
+_lgpu()   { echo "${GPU_KERNEL}/${GPU_DRIVER}"; }
+_lusers() { echo "${DISCOVERED_USERS[*]}"; }
+_lvirt()  { echo "${FEATURES[VIRTUALISATION]}"; }
+
+scr_hostname() {
+  local h; while true; do
+    h="$(tui_input "Hostname" "System hostname:" "$INSTALL_HOST")"
+    [[ "$h" =~ ^[a-zA-Z0-9._-]+$ ]] && { INSTALL_HOST="$h"; return; }
+    tui_msg "Error" "Invalid hostname — letters, digits, dots, hyphens only."
+  done
+}
+
+scr_gpu() {
+  GPU_KERNEL="$(tui_radio "GPU — Kernel Profile" "Kernel parameter profile:" \
+    "generic"  "Safe default — any hardware" "$([[ $GPU_KERNEL == generic  ]] && echo ON || echo OFF)" \
+    "thinkpad" "ThinkPad T480 — i915 GuC/HuC + Intel microcode" "$([[ $GPU_KERNEL == thinkpad ]] && echo ON || echo OFF)" \
+    "amd"      "AMD — amd_iommu + ppfeaturemask + AMD microcode" "$([[ $GPU_KERNEL == amd     ]] && echo ON || echo OFF)" \
+    "nvidia"   "Nvidia — DRM modesetting + nvidia initrd" "$([[ $GPU_KERNEL == nvidia  ]] && echo ON || echo OFF)")"
+  GPU_DRIVER="$(tui_radio "GPU — Driver" "GPU driver to load:" \
+    "none"         "No driver (VM / headless / Intel built-in)" "$([[ $GPU_DRIVER == none         ]] && echo ON || echo OFF)" \
+    "intel"        "Intel integrated" "$([[ $GPU_DRIVER == intel        ]] && echo ON || echo OFF)" \
+    "amd"          "AMD" "$([[ $GPU_DRIVER == amd          ]] && echo ON || echo OFF)" \
+    "nvidia"       "Nvidia discrete" "$([[ $GPU_DRIVER == nvidia       ]] && echo ON || echo OFF)" \
+    "nvidia-prime" "Nvidia + Intel PRIME hybrid" "$([[ $GPU_DRIVER == nvidia-prime ]] && echo ON || echo OFF)")"
+}
+
+scr_virt() {
+  if tui_yesno "Virtualisation" \
+"Enable the virtualisation feature (VirtualBox, Docker, libvirt groups)?
+Detected CPU support: ${DET_VIRT_CAPABLE}
+Current: ${FEATURES[VIRTUALISATION]}"; then
+    FEATURES[VIRTUALISATION]="true"
+  else
+    FEATURES[VIRTUALISATION]="false"
+  fi
+}
+
+scr_users() {
+  local preview="" u role
+  for u in "${DISCOVERED_USERS[@]}"; do
+    role="user"
+    [[ "${DISC_ADMIN[$u]:-false}" == "true" ]] && role="admin"
+    preview+="- ${u} (${DISC_DESC[$u]:-$u}) :: shell=${DISC_SHELL[$u]:-bash} role=${role} net=${DISC_NET[$u]:-false} virt=${DISC_VIRT[$u]:-false} audio=${DISC_AUDIO[$u]:-false} video=${DISC_VIDEO[$u]:-false} input=${DISC_INPUT[$u]:-false} plugdev=${DISC_PLUGDEV[$u]:-false}"$'\n'
+  done
+  tui_msg "Discovered Users" "Tak_OS uses the existing users instead of creating new ones.\n\nCurrent discovered users:\n${preview}"
+}
+
+scr_review() {
+  local _repo_users="${REPO_USERS[*]:-(none detected)}"
+  local _mapping; _mapping="$(user_mapping_summary)"
+  tui_msg "Review" \
+"Hostname       : ${INSTALL_HOST}
+
+GPU            : kernelParams=${GPU_KERNEL}  driver=${GPU_DRIVER}
+Detected GPU   : ${DET_GPUS:-none} (VM guest: ${DET_GUEST})
+NixOS          : ${REPO_VERSION}
+Virtualisation : ${FEATURES[VIRTUALISATION]}
+
+Repo users     : ${_repo_users}
+Discovered     : ${DISCOVERED_USERS[*]}
+User remap     :
+${_mapping}
+
+Your repository working tree is left untouched; replacements happen only in the staged install copy."
+}
+
+if [[ "$MODE" == "edit" ]]; then
+  _APPLIED="false"
+  while true; do
+    _choice="$(tui_menu "Tak_OS Installer v5 — edit" \
+      "Detected values are pre-filled. Change what you need, then Apply." \
+      "hostname" "Hostname         [$(_lhost)]"   \
+      "gpu"      "GPU / Kernel     [$(_lgpu)]"    \
+      "virt"     "Virtualisation   [$(_lvirt)]"   \
+      "users"    "Discovered users [$(_lusers)]"  \
+      "review"   "Review summary"                 \
+      "apply"    "Apply & Install"                \
+      "quit"     "Quit / Abort")"
+    case "$_choice" in
+      hostname) scr_hostname ;;
+      gpu)      scr_gpu ;;
+      virt)     scr_virt ;;
+      users)    scr_users ;;
+      review)   scr_review ;;
+      apply)
+        scr_review
+        tui_yesno "Confirm" "Proceed with installation?" || continue
+        _APPLIED="true"; break ;;
+      quit) die "Aborted by user." ;;
+    esac
+  done
+  [[ "$_APPLIED" != "true" ]] && die "Nothing applied."
+else
+  info "Automatic mode: installing with the detected values (use --edit to change them)."
+fi
+
+# ── Phase 3 ──────────────────────────────────────────────────────────────────
+step "Phase 3: Generating configuration"
+stage_project_copy
+rewrite_repo_user_data "${STAGE_DIR}" >/dev/null
+
+# Automatic mode leaves the GPU/kernel choice to hardware-detect.nix, which
+# resolves "auto" from the hardware-detected.nix copied below.
+if [[ "$MODE" == "auto" ]]; then
+  KERNEL_VALUE="auto"; DRIVER_VALUE="auto"
+else
+  KERNEL_VALUE="$GPU_KERNEL"; DRIVER_VALUE="$GPU_DRIVER"
+fi
+cp "$DETECTED_FILE" "${STAGE_DIR}/hardware-detected.nix"
+sed -i "s/^\(\s*kernelParams\s*=\s*\)\"[^\"]*\";/\1\"${KERNEL_VALUE}\";/" "${STAGE_DIR}/configuration.nix"
+sed -i "s/^\(\s*gpu\s*=\s*\)\"[^\"]*\";/\1\"${DRIVER_VALUE}\";/" "${STAGE_DIR}/configuration.nix"
+
+FEATURE_ARGS=()
+for key in "${FEATURE_ORDER[@]}"; do FEATURE_ARGS+=("${key}=${FEATURES[$key]}"); done
+apply_feature_markers "${STAGE_DIR}/configuration.nix" "${FEATURE_ARGS[@]}"
 
 sed -i "s/networking\.hostName = \"[^\"]*\"/networking.hostName = \"${INSTALL_HOST}\"/" \
   "${STAGE_DIR}/modules/networking.nix"
-sed -i "s/kernelParams\s*=\s*\"[^\"]*\"/kernelParams = \"${GPU_KERNEL}\"/" \
-  "${STAGE_DIR}/configuration.nix"
-sed -i "s/^\(\s*gpu\s*=\s*\)\"[^\"]*\"/\1\"${GPU_DRIVER}\"/" \
-  "${STAGE_DIR}/configuration.nix"
-info "Hostname=${INSTALL_HOST}  GPU=${GPU_KERNEL}/${GPU_DRIVER}"
-info "Repo user data was remapped only inside the staged install copy."
-info "Feature defaults applied via marker blocks; virtualisation stays disabled by default."
-ok "Configuration generated."
 
+write_user_files
+info "Hostname=${INSTALL_HOST}  GPU=${KERNEL_VALUE}/${DRIVER_VALUE}  Virtualisation=${FEATURES[VIRTUALISATION]}"
+info "Repo user data was remapped only inside the staged install copy."
+ok "Configuration generated at ${STAGE_DIR}."
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  step "Dry run finished"
+  ok "Nothing was deployed or built. Staged copy kept at: ${STAGE_DIR}"
+  exit 0
+fi
+
+# ── Phase 4 ──────────────────────────────────────────────────────────────────
 step "Phase 4: Deploying to ${TARGET_DIR}"
 [[ -f "${TARGET_DIR}/hardware-configuration.nix" ]] && cp "${TARGET_DIR}/hardware-configuration.nix" "${TEMP_ROOT}/hardware-configuration.nix"
 rsync -a --delete "${STAGE_DIR}/" "${TARGET_DIR}/"
 [[ -f "${TEMP_ROOT}/hardware-configuration.nix" ]] && cp "${TEMP_ROOT}/hardware-configuration.nix" "${TARGET_DIR}/"
 ok "Deployment complete."
 
+# ── Phase 5 ──────────────────────────────────────────────────────────────────
 step "Phase 5: Adaptive build"
 auto_fix() {
   local attempt=1 max=25
@@ -533,12 +607,14 @@ auto_fix() {
 }
 auto_fix || die "Build failed. Check logs in ${TARGET_DIR}/."
 
+# ── Phase 6 ──────────────────────────────────────────────────────────────────
 step "Phase 6: Switch"
 info "Switching to Tak_OS…"
 nixos-rebuild switch
 ok "Switch complete."
 
-step "Phase 7: Restore auto-commented packages (optional)"
+# ── Phase 7 ──────────────────────────────────────────────────────────────────
+step "Phase 7: Restore auto-commented packages"
 RESTORE="${TARGET_DIR}/scripts/restore-commented.sh"
 cat > "$RESTORE" << 'RS'
 #!/usr/bin/env bash
@@ -550,14 +626,22 @@ while IFS=: read -r file line var; do
 done < "$LOG"; rm -f "$LOG"; echo "Restored. Run: nixos-rebuild switch"
 RS
 chmod +x "$RESTORE"
-[[ -s "$COMMENT_LOG" ]] && {
-  tui_yesno "Restore" "Restore auto-commented packages and rebuild?" \
-    && { "$RESTORE"; info "Rebuilding…"; nixos-rebuild switch; } || true; }
+if [[ -s "$COMMENT_LOG" ]]; then
+  if [[ "$MODE" == "edit" ]]; then
+    if tui_yesno "Restore" "Restore auto-commented packages and rebuild?"; then
+      "$RESTORE"; info "Rebuilding…"; nixos-rebuild switch
+    fi
+  else
+    warn "Some packages were auto-commented because they failed to build."
+    info "Review them, then restore with: sudo ${RESTORE}"
+  fi
+fi
 
 printf "\n${GREEN}${BOLD}  Tak_OS installation complete.${RESET}\n\n"
 printf "  Per-user files : ${TARGET_USERS_DIR}/<name>.nix\n"
 printf "  Users hub      : ${TARGET_USERS_DIR}/default.nix\n"
 printf "  Home Manager   : ~/.hm-local/home.nix  (per user)\n"
 printf "  GPU            : kernelParams=%s  driver=%s\n" "$GPU_KERNEL" "$GPU_DRIVER"
+printf "  Hardware       : %s\n" "${DET_GPUS:-no GPU}, guest=${DET_GUEST}"
 [[ -s "$COMMENT_LOG" ]] && printf "  Restore pkgs   : sudo %s\n" "$RESTORE"
 printf "\n"

@@ -19,7 +19,7 @@ in {
     hardware.graphics = {
       # enable + enable32Bit set in hardware-graphics.nix (unconditional)
       extraPackages = with pkgs; [
-        vaapiVdpau
+        libva-vdpau-driver
         libvdpau
         libvdpau-va-gl
         nvidia-vaapi-driver

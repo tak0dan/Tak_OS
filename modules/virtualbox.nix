@@ -1,14 +1,8 @@
-# Tak_OS · virtualbox.nix — VirtualBox host + Docker (guarded by features.virtualisation)
+# Tak_OS · virtualbox.nix — VirtualBox host (guarded by features.virtualisation)
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 { pkgs, lib, features, ... }:
 
 lib.mkIf features.virtualisation {
-  ############################
-  # Virtualisation — Docker
-  ############################
-  # Enabled together with VirtualBox via features.virtualisation in configuration.nix.
-  virtualisation.docker.enable = true;
-
   ############################
   # Virtualisation — VirtualBox Host
   ############################

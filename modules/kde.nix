@@ -1,46 +1,134 @@
-# Tak_OS · kde.nix — KDE Plasma desktop environment
+# Tak_OS · kde.nix — KDE Plasma integration
 # github.com/tak0dan/Tak_OS · GNU GPLv3
 #
-# KDE.NIX — KDE/Qt runtime libraries (no Plasma session)
-# =======================================================
-# Provides Qt/KDE integration so KDE apps work well under Hyprland.
-# Activated when features.kde = true (set in configuration.nix).
+# KDE.NIX — KDE/Qt desktop integration
+# =====================================
+# Provides KDE/Qt integration so KDE applications work correctly
+# under Hyprland.
 #
-#   qt platformTheme            — native KDE file dialogs and styling
-#   polkit-kde-agent            — authentication popups, wired to hyprland-session.target
-#   QML2_IMPORT_PATH            — Qt5 declarative component import paths
-#   plasma-applications.menu    — XDG application menu from Plasma workspace
+# Package ownership:
+#   packages/kde.nix — KDE applications, plugins and libraries
 #
-# ⚠️  polkit-kde-agent is hardwired to hyprland-session.target.
-#     If features.hyprland = false, authentication popups will not auto-start.
+# Runtime integration:
+#   qt platformTheme     — native KDE/Qt styling and dialogs
+#   polkit               — system-wide authentication authority
+#   polkit-kde-agent     — graphical KDE authentication agent
+#   udisks2              — disk management and removable media
+#   applications.menu    — Plasma application menu
+#
+# No Qt5 QML compatibility paths are required here.
+# KDE/Qt packages are managed by packages/kde.nix.
 
 { pkgs, lib, features, ... }:
+
 {
+  # =========================
+  # Qt / KDE Integration
+  # =========================
+  #
+  # Enables NixOS Qt integration and tells Qt applications to use
+  # the KDE platform theme.
+  #
+  # This allows KDE/Qt applications running under Hyprland to use
+  # the expected KDE appearance and desktop integration.
+  #
+  # KDE applications themselves are installed separately through
+  # packages/kde.nix.
+
   qt = lib.mkIf features.kde {
-    enable        = true;
+    enable = true;
     platformTheme = "kde";
   };
 
-  environment.sessionVariables = lib.mkIf features.kde {
-    QML2_IMPORT_PATH = lib.mkForce (
-      lib.concatStringsSep ":" [
-        "${pkgs.libsForQt5.qtgraphicaleffects}/lib/qt-5/qml"
-        "${pkgs.libsForQt5.kcmutils}/lib/qt-5/qml"
-        "${pkgs.libsForQt5.knewstuff}/lib/qt-5/qml"
-      ]
-    );
-  };
+  # =========================
+  # UDisks2 — Disk Management
+  # =========================
+  #
+  # Provides the system D-Bus service used by desktop environments
+  # and applications for managing block devices.
+  #
+  # Dolphin/KIO uses this infrastructure for operations such as:
+  #   - discovering storage devices
+  #   - mounting filesystems
+  #   - unmounting filesystems
+  #   - ejecting removable media
+  #
+  # UDisks2 works together with Polkit when an operation requires
+  # user authentication.
 
-  systemd.user.services.polkit-kde-agent = lib.mkIf features.kde {
-    description = "Polkit KDE Authentication Agent";
-    after    = [ "hyprland-session.target" ];
-    wantedBy = [ "hyprland-session.target" ];
-    serviceConfig = {
-      ExecStart =
-        "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
-      Restart = "on-failure";
+  services.udisks2.enable =
+    lib.mkIf features.kde true;
+
+  # =========================
+  # Polkit — System Authentication
+  # =========================
+  #
+  # Polkit provides the system-wide authorization authority.
+  #
+  # It is responsible for determining whether a desktop user is
+  # allowed to perform privileged operations, for example:
+  #   - mounting certain filesystems
+  #   - unlocking or managing storage devices
+  #   - changing system configuration
+  #
+  # The KDE authentication agent below is only the graphical
+  # frontend which asks the user for authentication when Polkit
+  # requires it.
+
+  security.polkit.enable =
+    lib.mkIf features.kde true;
+
+  # =========================
+  # KDE Polkit Authentication Agent
+  # =========================
+  #
+  # Provides graphical authentication dialogs for applications
+  # requiring elevated privileges.
+  #
+  # This is especially important when using KDE applications such
+  # as Dolphin under a non-Plasma compositor such as Hyprland.
+  #
+  # The service is attached to graphical-session.target so the
+  # authentication agent starts together with the graphical user
+  # session instead of requiring Plasma itself.
+  #
+  # graphical-session-pre.target is used for ordering so the agent
+  # starts after the graphical session environment has been prepared,
+  # while still being pulled in by graphical-session.target.
+
+  systemd.user.services.polkit-kde-agent =
+    lib.mkIf features.kde {
+
+      description = "KDE Polkit Authentication Agent";
+
+      wantedBy = [
+        "graphical-session.target"
+      ];
+
+      after = [
+        "graphical-session-pre.target"
+      ];
+
+      serviceConfig = {
+        Type = "simple";
+
+        ExecStart =
+          "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
+
+        Restart = "on-failure";
+        RestartSec = 1;
+      };
     };
-  };
+
+  # =========================
+  # KDE Application Menu
+  # =========================
+  #
+  # Provides the Plasma application menu definition so KDE
+  # applications are correctly represented in XDG application
+  # menus even when Plasma itself is not running.
+  #
+  # This is useful when KDE applications are used under Hyprland.
 
   environment.etc."xdg/menus/applications.menu".source =
     lib.mkIf features.kde

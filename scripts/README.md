@@ -40,6 +40,21 @@ No manual file editing required — everything is detected automatically.
 | Users | Existing human users discovered from `getent passwd` + current group membership |
 | Hostname | `hostname -s` |
 | Target NixOS version | `system.stateVersion` in the repo's `configuration.nix` |
+| CPU, GPU, VM guest | `scripts/detect-hardware.sh` (sysfs + `systemd-detect-virt`) → `hardware-detected.nix` |
+| GPU kernel / driver | Detected profile, applied through `"auto"` in `features` and `modules/hardware-detect.nix` |
+| Virtualisation feature | On when the CPU has VT-x/AMD-V on bare metal |
+
+**Modes:**
+
+| Command | What happens |
+|---------|--------------|
+| `sudo bash scripts/install.sh` | **Default.** No prompts. Detects, stages, deploys, builds and switches. |
+| `sudo bash scripts/install.sh --edit` | Same, but first opens a TUI pre-filled with the detected values (hostname, GPU/kernel, virtualisation, users). |
+| `bash scripts/install.sh --dry-run` | Detects and stages only. No root, no channel changes, nothing deployed. The staged copy path is printed for inspection. |
+
+Running with `--edit` is only needed to override a detected value. Without it the
+installer finishes unattended. If a package fails to build, it is auto-commented
+and the installer prints the command to restore it.
 
 **Two-phase install:**
 
@@ -53,8 +68,9 @@ No manual file editing required — everything is detected automatically.
 3. Creates a temporary staged copy of the repo, rewrites repo-specific user
    data there from discovered system users, exports `users-declared/<name>.nix`,
    rebuilds the users hub, and patches the hostname / GPU profile there only.
-4. Defaults `kernelParams` to `"generic"` (safe for any hardware; change it
-   later once you know your GPU/CPU profile).
+4. Writes `kernelParams` and `gpu` as `"auto"`. The build then takes the GPU
+   profile from `hardware-detected.nix`, generated on the installing machine.
+   With `--edit` you can set these explicitly instead.
 5. Deploys the full config to `/etc/nixos/` via `rsync`, preserving
    `hardware-configuration.nix` and the nixorcist cache.
 6. Runs `nixos-rebuild switch` into Tak_OS.
@@ -71,7 +87,9 @@ The staged rewrite is meant for machine-bound values such as:
 - hostname / GPU choices selected during install
 
 ```bash
-sudo bash /path/to/Tak_OS/scripts/install.sh
+sudo bash /path/to/Tak_OS/scripts/install.sh            # automatic
+sudo bash /path/to/Tak_OS/scripts/install.sh --edit     # review detected values first
+     bash /path/to/Tak_OS/scripts/install.sh --dry-run  # stage only, inspect the result
 ```
 
 > **Note:** After the rebuild your home-manager scaffold is written to

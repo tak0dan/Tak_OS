@@ -1,94 +1,134 @@
 # Tak_OS · kde.nix — KDE Plasma specific packages
 # github.com/tak0dan/Tak_OS · GNU GPLv3
+#
+# KDE.NIX — KDE/Qt desktop applications and supporting packages
+# ================================================================
+# Provides KDE applications, KDE Frameworks and desktop integration
+# packages used by Tak_OS.
+#
+# Runtime/system integration such as:
+#   - Qt platform configuration
+#   - UDisks2
+#   - Polkit
+#   - KDE Polkit authentication agent
+#   - XDG menu integration
+#
+# is handled by the main kde.nix module.
+#
+# This file owns KDE packages themselves.
+
 { pkgs }:
 
 with pkgs; [
 
+  # Native KDE/KIO popup bridge used by the Hyprland desktop grid.
+  (callPackage /home/tak_1/native-kio-context-menu/package.nix { })
+
   # =========================
   # Core KDE Applications
   # =========================
-  kdePackages.dolphin      # KDE file manager
-  kdePackages.discover     # Software center
-  kdePackages.kcalc        # KDE calculator
-  kdePackages.konsole      # KDE terminal emulator
-  kdePackages.ksystemlog   # KDE system log viewer
+  #
+  # Main KDE applications used by Tak_OS.
+  #
+  # Dolphin provides the KDE file manager.
+  # Ark provides archive management and integrates with Dolphin
+  # through the Dolphin plugins package below.
+
+  kdePackages.dolphin
+  kdePackages.discover
+  kdePackages.kcalc
+  kdePackages.konsole
+  kdePackages.ksystemlog
+  kdePackages.kate
+  kdePackages.ark
 
   # =========================
-  # KDE Frameworks (Qt6)
+  # Dolphin Integration
   # =========================
-  kdePackages.frameworkintegration   # Integrates non-KDE apps with KDE look-and-feel
-  kdePackages.kconfig                # Configuration framework
-  kdePackages.kcmutils               # Configuration module (KCM) utilities
-  kdePackages.kcoreaddons            # Core add-ons for KDE frameworks
-  kdePackages.kdeplasma-addons       # Plasma applets and widgets
-  kdePackages.knewstuff              # Hot New Stuff — in-app content download
+  #
+  # Additional Dolphin plugins and context-menu integrations.
+  #
+  # In particular, this provides archive-related integration with
+  # Ark so archives can be managed directly from Dolphin instead
+  # of requiring Ark to be opened separately.
+  #
+  # Dolphin itself is responsible for file management, while Ark
+  # handles archive operations.
+
+  kdePackages.dolphin-plugins
 
   # =========================
-  # KDE Frameworks (Qt5)
-  # CRITICAL: Required for legacy KCMs and Qt5-based KDE apps
+  # KDE Frameworks — Qt6
   # =========================
-  libsForQt5.kconfig       # Qt5 KConfig
-  libsForQt5.kcmutils      # Qt5 KCM utilities
-  libsForQt5.kcoreaddons   # Qt5 KCoreAddons
-  libsForQt5.kiconthemes   # Qt5 icon theme support
-  libsForQt5.kio           # Qt5 KIO file-access framework
-  libsForQt5.knewstuff     # Qt5 Hot New Stuff
+  #
+  # Core KDE Frameworks required by KDE applications and their
+  # integration with the Qt6 desktop environment.
 
-  # Fixes: QtGraphicalEffects QML module missing error
-  libsForQt5.qtgraphicaleffects   # Qt5 QML graphical effects
-  libsForQt5.qtmultimedia         # Qt5 multimedia playback support
-
-  # =========================
-  # KIO (File Access Framework)
-  # =========================
-  kdePackages.kio          # KIO core — file dialogs, remote protocols
-  kdePackages.kio-admin    # KIO admin plugin — file ops as root
-  kdePackages.kio-extras   # KIO extra protocols (ftp, sftp, smb, …)
-  kdePackages.kservice     # KDE service framework
-
-  # =========================
-  # Plasma / Workspace Integration
-  # =========================
-  kdePackages.plasma-integration   # Plasma integration for non-Plasma apps
-  kdePackages.plasma-workspace     # Plasma shell and workspace
-
-  # =========================
-  # Theming
-  # =========================
-  kdePackages.breeze        # Breeze widget style (Qt6)
-  kdePackages.breeze-gtk    # Breeze GTK theme
-  kdePackages.breeze-icons  # Breeze icon theme
-
-  # =========================
-  # Qt Theming Tools
-  # =========================
-  libsForQt5.qt5ct    # Qt5 configuration tool (fonts, style, icons)
-  nwg-look            # GTK theme switcher for wlroots desktops
-  qt6Packages.qt6ct   # Qt6 configuration tool
-
-  # ---------------------------
-  # Qt6 KDE (modern)
-  # NOTE: Entries below are intentionally repeated for group independence.
-  # ---------------------------
   kdePackages.frameworkintegration
   kdePackages.kconfig
   kdePackages.kcmutils
   kdePackages.kcoreaddons
+  kdePackages.kdeplasma-addons
   kdePackages.knewstuff
 
-  # ---------------------------
-  # Qt5 KDE (REQUIRED for KCMs)
-  # ---------------------------
-  libsForQt5.kconfig
-  libsForQt5.kcmutils
-  libsForQt5.kcoreaddons
-  libsForQt5.knewstuff
+  # =========================
+  # KIO — File Access Framework
+  # =========================
+  #
+  # KIO provides KDE's file access and URL handling infrastructure.
+  #
+  # These components allow Dolphin and other KDE applications to
+  # work with local files, network locations and additional KDE
+  # protocols.
+  #
+  # kio-admin additionally provides administrative file operations
+  # through KDE's KIO infrastructure.
+  #
+  # kio-extras provides additional KIO protocols and integrations.
 
-  # 🔥 THIS FIXES YOUR ERROR
-  libsForQt5.qtgraphicaleffects
+  kdePackages.kio
+  kdePackages.kio-admin
+  kdePackages.kio-extras
+  kdePackages.kservice
 
-  # Stability deps (often missing in partial KDE setups)
-  libsForQt5.kiconthemes
-  libsForQt5.kio
+  # =========================
+  # Plasma / Workspace Integration
+  # =========================
+  #
+  # Provides KDE/Plasma integration libraries and workspace
+  # components needed by KDE applications even when Plasma itself
+  # is not the active desktop session.
+  #
+  # Plasma is not started by this package list; Tak_OS can use
+  # these components from Hyprland.
 
+  kdePackages.plasma-integration
+  kdePackages.plasma-workspace
+
+  # =========================
+  # Theming
+  # =========================
+  #
+  # KDE's standard visual theme, GTK integration and icon set.
+  #
+  # These allow KDE applications to retain consistent KDE styling
+  # when running under Hyprland.
+
+  kdePackages.breeze
+  kdePackages.breeze-gtk
+  kdePackages.breeze-icons
+
+  # =========================
+  # Qt / GTK Theming Tools
+  # =========================
+  #
+  # Configuration utilities for Qt and GTK applications.
+  #
+  # qt5ct    — Qt5 appearance/configuration
+  # qt6ct    — Qt6 appearance/configuration
+  # nwg-look — GTK appearance/configuration under Wayland/WMs
+
+  libsForQt5.qt5ct
+  qt6Packages.qt6ct
+  nwg-look
 ]

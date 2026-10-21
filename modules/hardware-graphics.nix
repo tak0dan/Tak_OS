@@ -5,7 +5,7 @@
 # ========================================================
 # Enables hardware-accelerated rendering and 32-bit graphics libs
 # (required for Steam and most games).
-# GPU-specific driver config lives in modules/gpu.nix and its sub-modules.
+# Hardware-specific driver policy belongs in the machine hardware configuration.
 
 { ... }:
 {
