@@ -21,6 +21,7 @@ ordered by priority within each group. Check items off as they land.
 - [x] Evaluation warning: `swww` was renamed to `awww`. Update the package name.
 - [ ] Two architectures coexist: upstream's `graph.platform` / `graph.services`
       layer and the older `features.*` flags. Pick one and retire the other.
+      -- USE THE UPSTREAM --
 
 ## 1. Profile-based installer (`scripts/takos-installer.py`)
 
@@ -67,9 +68,9 @@ Profiles are composed, not copied: `hyprland` = `minimal` + `kde-runtime` +
       base is loaded once. Check that duplicate `imports` paths do not double
       option definitions (verify in a VM before relying on it).
 - [ ] Package groups (`packages/*.nix`) are modules too. Profiles pick groups
-      instead of editing lists by hand.
+      instead of editing lists by hand.  
 - [ ] Options that differ per use (e.g. KDE as base vs. standalone) are set by
-      the profile, not by copying the file.
+      the profile, not by copying the file. --to fix --
 - [x] Dependency and conflict checks run before the build (e.g. two display
       managers, two GPU profiles that do not pair).
 
@@ -84,14 +85,14 @@ Profiles are composed, not copied: `hyprland` = `minimal` + `kde-runtime` +
 ## 4. Testing
 
 - [ ] Evaluation matrix: `nix-instantiate --eval` the toplevel for every profile
-      in CI so a broken profile fails before it reaches a user.
-- [ ] `nixos-rebuild build-vm` smoke test for `minimal`, `hyprland` and `vm`.
+      in CI so a broken profile fails before it reaches a user. -- TOP PRIORITY --
+- [ ] `nixos-rebuild build-vm` smoke test for `minimal`, `hyprland` and `vm`. -- SECOND PRIORITY --
 - [x] Parse check for all `.nix` files (catches the xampp/eclipse-class breakage).
 - [x] Python unit tests for the installer's profile resolver and dedupe logic.
 
 ## 5. Safety and secrets
 
-- [ ] No credentials in the repo. The WiFi-EDU profile was removed; keep
+- [x] No credentials in the repo. The WiFi-EDU profile was removed; keep
       credentials in an untracked environment file or a secrets manager.
 - [ ] Installer never writes outside the staged copy until the user confirms
       the deploy step.
